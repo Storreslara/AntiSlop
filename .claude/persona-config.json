@@ -9,7 +9,6 @@
   "pluginVersion": "0.31.227",
   "personaSelection": [
     "spec-master",
-    "task-master",
     "scribe",
     "reviewer",
     "milestone-auditor",
@@ -46,7 +45,6 @@
     ".claude/agents/explorer.md": "65de27256eb4b834249e25e01829ca307e51761821931b7e1f82e20b68ea4ad9",
     ".claude/agents/lead-programmer.md": "85e313513ee0af2db059e19c28d618947fc95293dbeb9089f6555550154b6f66",
     ".claude/agents/spec-master.md": "c3118db699f4ee0305ae26b20d3a07e3cd5aa19f29130f227836b80bc22235ca",
-    ".claude/agents/task-master.md": "d4dcf868d3a3c895e16b4d5d1255614c84352e35254f0899575d1c16836a73fe",
     ".claude/agents/scribe.md": "ed8ddf8b72085f7935a27968cae9a5601032bd8ebec890fcc4700e3ac9a68d1b",
     ".claude/agents/reviewer.md": "98cf7cfa479fbab1f5beb42d234f4257ced9e0b32831d47cd0df66dbe9e0fa7b",
     ".claude/agents/milestone-auditor.md": "4e2189b9f478a4623387031ecfb74537cd163703ef000eee3c33b5bc873d5d56",

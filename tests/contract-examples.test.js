@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-// AC-H2.1 (rgh-h2): the worked examples in agents/task-master.md score 7/7 under --rubric=v2.
+// AC-H2.1 (rgh-h2): the worked examples in docs/contract-examples.md score 7/7 under --rubric=v2.
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
@@ -22,7 +22,7 @@ function check(name, fn) {
 
 // Whole-line markers; the fence lines directly inside the markers are dropped.
 function example(name) {
-  const lines = fs.readFileSync(path.join(REPO_ROOT, 'agents', 'task-master.md'), 'utf8').split('\n');
+  const lines = fs.readFileSync(path.join(REPO_ROOT, 'docs', 'contract-examples.md'), 'utf8').split('\n');
   const b = lines.indexOf(`<!-- ${name}:begin -->`);
   const e = lines.indexOf(`<!-- ${name}:end -->`);
   assert.ok(b >= 0 && e > b, `${name} markers not found`);
@@ -61,7 +61,7 @@ check('scribe example has a separate proof: line', () => {
   assert.ok(example('scribe-contract-example').split('\n').some((l) => l.startsWith('   proof: ')), 'no separate proof: line');
 });
 
-// lov-4: the issue-body layout task-master documents is one bin/contract-guard.js accepts.
+// lov-4: the issue-body layout docs/contract-examples.md documents is one bin/contract-guard.js accepts.
 function guard(text, id) {
   const r = spawnSync('node', ['bin/contract-guard.js', '-', `--unit=${id}`], { cwd: REPO_ROOT, encoding: 'utf8', input: text });
   return r.stdout.trim();

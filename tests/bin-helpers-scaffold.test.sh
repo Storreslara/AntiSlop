@@ -10,7 +10,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 cd "$TMP" || exit 1
 git init -q . && git -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
-node "$ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe >/dev/null 2>&1
+node "$ROOT/bin/cli.js" --personas=spec-master,reviewer,scribe >/dev/null 2>&1
 
 FILES="ladder-tier.sh contract-guard.js contract-score.js fail-count.sh escalation-card.sh unit-bookkeeping.sh blast-radius.sh review-precheck.sh unit-size.sh refutation-brief.sh"
 check_files() {

@@ -65,7 +65,6 @@ const rangesIn = (text) => [...text.matchAll(/\b([RS])\d+-\1\d+\b/g)].map((m) =>
 const docs = [
   { name: 'CONTEXT.md rubric v2 entry', text: entry('CONTEXT.md', '**rubric v2**:'), sMode: 'each' },
   { name: 'docs/harness-glossary.md contract score entry', text: entry('docs/harness-glossary.md', '**contract score**:'), sMode: 'set' },
-  { name: 'agents/task-master.md', text: flat(read('agents/task-master.md')), sMode: null },
 ];
 
 for (const doc of docs) {

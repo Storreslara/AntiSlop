@@ -82,7 +82,7 @@ check('(i) scaffold renders sonnet; the opt-out renders inherit after --update -
   try {
     const run = (args) => execFileSync('node', [path.join(REPO_ROOT, 'bin/cli.js'), ...args], { cwd: tmp, stdio: 'pipe' });
     execFileSync('git', ['init', '-q', '.'], { cwd: tmp });
-    run(['--personas=spec-master,task-master,reviewer,scribe']);
+    run(['--personas=spec-master,reviewer,scribe']);
     const mirror = path.join(tmp, '.claude', 'agents', 'orchestrator.md');
     assert.deepStrictEqual(frontmatterModels(fs.readFileSync(mirror, 'utf8')), ['model: sonnet']);
     const cfgPath = path.join(tmp, '.claude', 'persona' + '-config.json');

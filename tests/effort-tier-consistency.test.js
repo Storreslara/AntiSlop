@@ -41,7 +41,7 @@ function isValidEffort(v) {
   return VALID_TIERS.has(v) || /^-?\d+$/.test(v);
 }
 
-const TIERS = { explorer: 'low', 'task-master': 'medium', reviewer: 'high' };
+const TIERS = { explorer: 'low', reviewer: 'high' };
 
 for (const [persona, tier] of Object.entries(TIERS)) {
   check(`AC1: agents/${persona}.md declares effort: ${tier}`, () => {

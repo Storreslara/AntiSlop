@@ -39,7 +39,7 @@ const mirrors = fs.readdirSync(MIRROR_DIR).filter((f) => f.endsWith('.md'));
 // SEPARATE templates/persona-protocol-slim.md, which is out of scope for
 // this spec step — not in its "Affected files" list — and is left for a
 // separate pass even though it carries a same-shaped WIP-sentinel dangle.
-const C2_1_MIRRORS = ['reviewer.md', 'spec-master.md', 'task-master.md', 'milestone-auditor.md', 'lead-programmer.md'];
+const C2_1_MIRRORS = ['reviewer.md', 'spec-master.md', 'milestone-auditor.md', 'lead-programmer.md'];
 
 check('C2.1: every named mirror mentioning "WIP sentinel" also mentions "wip-handoff"', () => {
   for (const f of C2_1_MIRRORS) {

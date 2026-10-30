@@ -23,7 +23,7 @@ const PKG_ROOT = path.resolve(__dirname, '..');
 const CWD = process.cwd();
 
 const CORE_PERSONAS = ['orchestrator', 'explorer', 'lead-programmer'];
-const OPTIONAL_PERSONAS = ['spec-master', 'task-master', 'scribe', 'reviewer', 'milestone-auditor', 'agent-auditor'];
+const OPTIONAL_PERSONAS = ['spec-master', 'scribe', 'reviewer', 'milestone-auditor', 'agent-auditor'];
 
 // Per-persona protocol delivery (OQ6=A body-inlining; @import does not resolve
 // inside a subagent body — proven in issue #121 Step 2). Full-tier personas
@@ -38,19 +38,21 @@ function protocolTierFor(name) {
 }
 // Legacy-token migration: the persona formerly named `planner` was renamed
 // `hivemind` (repo-wide rename, plugin v0.6.0); `hivemind` was later split
-// into `spec-master` and `task-master` (plugin v0.10.0); the persona
+// into `spec-master` and `task-master` (plugin v0.10.0), and `task-master`
+// was later retired into `spec-master`; the persona
 // formerly named `repo-historian` was renamed `scribe` (repo-wide rename,
 // plugin v0.10.0) — these are deprecated, legacy `--personas=planner` /
 // `--personas=hivemind` / `--personas=repo-historian` / legacy
 // `personaSelection` entries only. Each value is an array of current
 // token(s) a legacy token maps forward to (a plain string map can't
-// represent the one-to-two hivemind split); entries chain (`planner` ->
-// `hivemind` -> `spec-master`+`task-master`) via resolveLegacyToken below
+// represent a one-to-many split); entries chain (`planner` ->
+// `hivemind` -> `spec-master`) via resolveLegacyToken below
 // rather than being silently dropped by the OPTIONAL_PERSONAS intersection
 // filter.
 const LEGACY_PERSONA_MAP = {
   planner: ['hivemind'],
-  hivemind: ['spec-master', 'task-master'],
+  hivemind: ['spec-master'],
+  'task-master': ['spec-master'],
   'repo-historian': ['scribe'],
 }; // legacy token -> current token(s)
 // researcher is handled separately: it's a template, not a plain agent copy.
@@ -310,7 +312,7 @@ function legacyTokensIn(selection) {
 
 // Resolves a single token through LEGACY_PERSONA_MAP to a flat list of
 // current tokens, chaining through intermediate legacy tokens (e.g.
-// `planner` -> `hivemind` -> `spec-master`+`task-master`).
+// `planner` -> `hivemind` -> `spec-master`).
 function resolveLegacyToken(token) {
   if (!(token in LEGACY_PERSONA_MAP)) return [token];
   return LEGACY_PERSONA_MAP[token].flatMap(resolveLegacyToken);
@@ -885,30 +887,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Third verdict: insufficient-context',
       'Fourth verdict: escalate-to-human',
       'Microworld bundles (format and the check contract)',
-    ],
-  },
-  'task-master': {
-    include: [
-      ...UNIVERSAL_PROTOCOL_CORE,
-      'Teammate Write/Edit fallback and gate rephrasing doctrine',
-      'Retrieval contract',
-      'Machine-checkable criteria',
-      'Review ownership — one unit, one review, single owner',
-      'Review markers and gate mechanics (owner-facing)',
-      'FAIL record (durable warning for future spawns)',
-      'A note on `memory`',
-    ],
-    drop: [
-      'Dispatch contract (five fields)',
-      'WIP sentinel (mid-task handoff, not a bypass)',
-      'Pending-review flag (default-mode review backstop)',
-      'Third verdict: insufficient-context',
-      'Fourth verdict: escalate-to-human',
-      'Continuing after a FAIL verdict',
-      'Microworld bundles (format and the check contract)',
-      // task-master copies acceptance-criteria commands verbatim into
-      // dispatch prompts but never executes them itself (item04-2).
-      'Running acceptance-criteria commands (there is no self-wake)',
     ],
   },
   'milestone-auditor': {
@@ -2512,7 +2490,6 @@ async function main() {
       }
       const label = {
         'spec-master': 'spec-master (turns ambiguous goals into precise specs; skip only for purely mechanical/small work)',
-        'task-master': 'task-master (slices a finalized spec into dispatch-ready tasks; skip only for purely mechanical/small work)',
         scribe: 'scribe (maintains wiki/CONTEXT.md/ADRs; skip if no maintained wiki wanted)',
         'milestone-auditor': 'milestone-auditor (audits plan premises at milestone boundaries; skip if no real milestone structure or spec-master was also skipped)',
         'agent-auditor': 'agent-auditor (read-only report on dispatch anomalies and model/skill-usage summaries; skip if you don\'t want this observability report)',

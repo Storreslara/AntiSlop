@@ -26,7 +26,7 @@ content at releases, so the version must change at each release.
 for its same-commit CHANGELOG line and for a non-decreasing version.
 
 ### 4. Optional personas degrade gracefully (SHOULD)
-References to `spec-master`/`task-master`/`scribe`/`reviewer`/`researcher`/
+References to `spec-master`/`scribe`/`reviewer`/`researcher`/
 `milestone-auditor` in shared prose must stay conditionally phrased ("if
 present, otherwise...") so a project that skips one doesn't ship broken
 prose.

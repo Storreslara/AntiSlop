@@ -23,16 +23,13 @@ for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
   has "$f" '"Review markers and gate mechanics (owner-facing)" section lists'
   hasnot "$f" '"Review ownership" section lists'
 done
-for f in agents/task-master.md .claude/agents/task-master.md; do
-  has "$f" 'Commit the handoff note with'
-done
 for f in agents/spec-master.md .claude/agents/spec-master.md; do
   has "$f" 'after every 3 contract files'
 done
 for f in adapters/codex/agents/orchestrator.toml adapters/cursor/agents/orchestrator.md; do
   has "$f" 'is not progress'
 done
-for p in orchestrator task-master spec-master; do
+for p in orchestrator spec-master; do
   for f in "agents/$p.md" ".claude/agents/$p.md"; do
     has "$f" 'STATUS: incomplete — checkpoint:'
   done
@@ -69,11 +66,6 @@ for f in agents/reviewer.md .claude/agents/reviewer.md; do
 done
 for f in templates/persona-protocol.md .claude/persona-protocol.md; do
   has "$f" 'reproduce it before fixing it, and report one that does not reproduce'
-done
-for f in agents/task-master.md .claude/agents/task-master.md; do
-  has "$f" 'it gets no criterion and no edit'
-  has "$f" 'with the failing output as its `expect:`'
-  has "$f" '`not-reproduced: <the defect line, without the prefix>`'
 done
 for f in agents/milestone-auditor.md .claude/agents/milestone-auditor.md; do
   has "$f" 'Re-verify the first 3 of them (all, if fewer)'

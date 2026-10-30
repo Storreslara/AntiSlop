@@ -40,7 +40,7 @@ done
 # qw-u3: protocol narrative trim. Rules P1-P7 stay in the protocol and in every mirror that inlines
 # their section; the provenance note, the ADR-0028 cause story and three status-line asides are removed.
 for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agents/orchestrator.md \
-         .claude/agents/reviewer.md .claude/agents/spec-master.md .claude/agents/task-master.md \
+         .claude/agents/reviewer.md .claude/agents/spec-master.md \
          .claude/agents/milestone-auditor.md; do
   has "$f" 'Only one unit is ever mid-review'
   has "$f" 'scoped to the stopping reviewer'"'"'s own stamped units'
@@ -52,7 +52,7 @@ for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agent
   hasnot "$f" 'a test-hygiene defect, not a violation of unit-exclusivity'
 done
 for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agents/orchestrator.md \
-         .claude/agents/reviewer.md .claude/agents/spec-master.md .claude/agents/task-master.md \
+         .claude/agents/reviewer.md .claude/agents/spec-master.md \
          .claude/agents/milestone-auditor.md .claude/agents/lead-programmer.md; do
   has "$f" '`^STATUS: (complete|incomplete [—-] .+)$`'
   has "$f" 'The main session answering its user directly has no caller, so there is nothing to sign.'
@@ -133,7 +133,7 @@ for f in agents/orchestrator.md adapters/codex/agents/orchestrator.toml adapters
   hasnot "$f" 'When you dispatch scribe for a unit'
 done
 for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agents/orchestrator.md \
-         .claude/agents/reviewer.md .claude/agents/spec-master.md .claude/agents/task-master.md \
+         .claude/agents/reviewer.md .claude/agents/spec-master.md \
          .claude/agents/milestone-auditor.md .claude/agents/lead-programmer.md; do
   hasnot "$f" 'not an exemption'
   hasnot "$f" 'Not an alternative to the WIP sentinel'

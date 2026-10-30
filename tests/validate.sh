@@ -274,10 +274,10 @@ done
 rm -f "$frontmatter_yaml_err"
 
 echo
-echo "== reviewer/task-master: cacheTtl nested under experimental:, not top-level =="
+echo "== reviewer: cacheTtl nested under experimental:, not top-level =="
 # Claude Code only recognizes this field under experimental: - a top-level
 # cacheTtl: is silently dropped (see cache-ttl-gapped-personas Defect 1).
-for f in agents/reviewer.md agents/task-master.md; do
+for f in agents/reviewer.md; do
   if grep -qE '^cacheTtl:' "$f"; then
     echo "FAIL $f (cacheTtl at top level of frontmatter - must nest under experimental:)"
     fail=1
@@ -323,7 +323,7 @@ echo "== optional-persona references must be phrased conditionally =="
 # hard-errors when a project skips that persona. Checked per-PARAGRAPH
 # (blank-line-separated, wrapped lines joined) rather than per physical line,
 # since a conditional qualifier often lands on the next wrapped line.
-# NOTE: spec-master/task-master are also opt-out but deliberately excluded
+# NOTE: spec-master is also opt-out but deliberately excluded
 # from this loop — agents/orchestrator.md references them far more densely,
 # with "(if present)" qualifiers scoped per-section rather than repeated
 # every paragraph, which this paragraph-scoped checker would false-positive
@@ -1546,7 +1546,7 @@ else
 fi
 
 echo
-echo "== agents/task-master.md worked examples score 7/7 under --rubric=v2 (Node, rgh-h2) =="
+echo "== docs/contract-examples.md worked examples score 7/7 under --rubric=v2 (Node, rgh-h2) =="
 if node tests/contract-examples.test.js; then
   echo "OK   tests/contract-examples.test.js"
 else

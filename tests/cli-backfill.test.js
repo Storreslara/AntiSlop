@@ -47,12 +47,12 @@ check('buildFileSpecs registers the slim protocol digest for .claude/persona-pro
 });
 
 check('renderCleanBody inlines the full protocol into full-tier bodies and the slim digest into slim-tier bodies', () => {
-  const specs = cli.buildFileSpecs(['spec-master', 'task-master', 'scribe', 'reviewer', 'milestone-auditor', 'researcher', 'agent-auditor']);
+  const specs = cli.buildFileSpecs(['spec-master', 'scribe', 'reviewer', 'milestone-auditor', 'researcher', 'agent-auditor']);
   const config = { substitutions: { graphMcpLaunch: { command: 'npx', args: ['g'] }, arxivMcpLaunch: null } };
   const render = (rel) => cli.renderCleanBody(specs.find((s) => s.projectRelPath === rel), config);
   const FULL_ONLY = 'INSUFFICIENT-CONTEXT';
   const SLIM_SHARED = 'lead with the direct answer';
-  for (const p of ['orchestrator', 'spec-master', 'task-master', 'lead-programmer', 'reviewer', 'milestone-auditor']) {
+  for (const p of ['orchestrator', 'spec-master', 'lead-programmer', 'reviewer', 'milestone-auditor']) {
     const body = render(`.claude/agents/${p}.md`);
     assert.ok(body.includes(FULL_ONLY), `${p} (full-tier) should inline the full protocol`);
     assert.ok(body.includes(SLIM_SHARED), `${p} should include the shared answer-shape rule`);
@@ -158,7 +158,7 @@ check('renderCleanBody inlines only the sections the selector returns for the pe
 // below still relies on it being an iff-frontmatter EXCEPTION for the memory
 // section, which the other rows here are not — orchestrator's new partial
 // trim is covered by its own check instead.
-const TRIMMED_PERSONAS = ['lead-programmer', 'reviewer', 'spec-master', 'task-master', 'milestone-auditor'];
+const TRIMMED_PERSONAS = ['lead-programmer', 'reviewer', 'spec-master', 'milestone-auditor'];
 
 // Criterion 1 (as corrected by A4.1): positive AND negative, per persona,
 // rendered with the config this repo actually SHIPS — an empty config leaves
@@ -456,19 +456,29 @@ check('migrateLegacyPersonaTokens resolves repo-historian to scribe without a pl
   assert.ok(!migrated.includes('repo-historian'), `"repo-historian" should have been migrated away`);
 });
 
-check('migrateLegacyPersonaTokens expands legacy hivemind into both spec-master and task-master', () => {
+check('migrateLegacyPersonaTokens maps legacy hivemind to spec-master', () => {
   const selection = ['hivemind', 'researcher'];
   const migrated = cli.migrateLegacyPersonaTokens(selection, { logNote: false });
   assert.ok(migrated.includes('spec-master'), `expected "spec-master" in ${JSON.stringify(migrated)}`);
-  assert.ok(migrated.includes('task-master'), `expected "task-master" in ${JSON.stringify(migrated)}`);
+  assert.ok(!migrated.includes('task-master'), `"task-master" is retired, got ${JSON.stringify(migrated)}`);
   assert.ok(!migrated.includes('hivemind'), `"hivemind" should have been migrated away`);
 });
 
-check('migrateLegacyPersonaTokens chains the even-older planner token through hivemind to both new personas', () => {
+check('migrateLegacyPersonaTokens migrates a lone task-master to spec-master with the deprecation note', () => {
+  const lines = [];
+  const orig = console.log;
+  console.log = (m) => lines.push(String(m));
+  let migrated;
+  try { migrated = cli.migrateLegacyPersonaTokens(['task-master'], { logNote: true }); } finally { console.log = orig; }
+  assert.deepStrictEqual(migrated, ['spec-master']);
+  assert.ok(lines.some((l) => l.includes('Deprecation note') && l.includes('"task-master"')), `no note in ${JSON.stringify(lines)}`);
+});
+
+check('migrateLegacyPersonaTokens chains the even-older planner token through hivemind to spec-master', () => {
   const selection = ['planner'];
   const migrated = cli.migrateLegacyPersonaTokens(selection, { logNote: false });
   assert.ok(migrated.includes('spec-master'), `expected "spec-master" in ${JSON.stringify(migrated)}`);
-  assert.ok(migrated.includes('task-master'), `expected "task-master" in ${JSON.stringify(migrated)}`);
+  assert.ok(!migrated.includes('task-master'), `"task-master" is retired, got ${JSON.stringify(migrated)}`);
   assert.ok(!migrated.includes('planner') && !migrated.includes('hivemind'), `legacy tokens should be gone from ${JSON.stringify(migrated)}`);
 });
 
@@ -1933,7 +1943,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
-  check('--update --personas=hivemind migrates the legacy token then unions both resolved personas (C1.7)', () => {
+  check('--update --personas=hivemind migrates the legacy token then unions the resolved persona (C1.7)', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-personas-legacy-'));
     try {
       buildBaselineProject(tmp, {}, []);
@@ -1941,8 +1951,8 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
       const config = JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8'));
       assert.ok(
-        config.personaSelection.includes('spec-master') && config.personaSelection.includes('task-master'),
-        `expected both spec-master and task-master, got ${JSON.stringify(config.personaSelection)}`
+        config.personaSelection.includes('spec-master') && !config.personaSelection.includes('task-master'),
+        `expected spec-master only, got ${JSON.stringify(config.personaSelection)}`
       );
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
@@ -2153,11 +2163,11 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   // registration as data); site 5's own no-write proof is C2.11.
   function buildArmedFixture(label) {
     const tmp = dryRunTmp(label);
-    const config = buildBaselineProject(tmp, {}, ['spec-master', 'task-master']);
+    const config = buildBaselineProject(tmp, {}, ['spec-master', 'reviewer']);
     const agents = path.join(tmp, '.claude', 'agents');
 
     // Site 1: a legacy persona token recorded, with its agent file on disk.
-    config.personaSelection = ['spec-master', 'task-master', 'hivemind'];
+    config.personaSelection = ['spec-master', 'reviewer', 'hivemind'];
     fs.writeFileSync(path.join(agents, 'hivemind.md'), 'legacy persona body\n');
 
     // Site 2: the bare global protocol import the migration strips.
@@ -2192,7 +2202,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
 
     // Site 9: a mirror locally edited away from its recorded hash, resolved by
     // --accept=all.
-    fs.appendFileSync(path.join(agents, 'task-master.md'), '\nlocal hand-edit\n');
+    fs.appendFileSync(path.join(agents, 'reviewer.md'), '\nlocal hand-edit\n');
 
     // Sites 10, 11: three fileHashes entries dropped.
     for (const rel of ['.claude/agents/orchestrator.md', '.claude/agents/explorer.md', '.claude/agents/lead-programmer.md']) {
@@ -2482,7 +2492,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     const built = [];
     const withCurrentBase = (label, arm) => {
       const tmp = dryRunTmp(label);
-      const config = buildBaselineProject(tmp, {}, ['spec-master', 'task-master']);
+      const config = buildBaselineProject(tmp, {}, ['spec-master', 'reviewer']);
       populateGitignore(tmp);
       arm(tmp, config);
       fs.writeFileSync(path.join(tmp, '.claude', 'persona-config.json'), JSON.stringify(config, null, 2) + '\n');
@@ -2502,7 +2512,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       }],
       ['.gitignore stripped of the managed entries', (tmp) => fs.rmSync(path.join(tmp, '.gitignore'))],
       ['legacy persona token recorded, its agent file present', (tmp, config) => {
-        config.personaSelection = ['spec-master', 'task-master', 'hivemind'];
+        config.personaSelection = ['spec-master', 'reviewer', 'hivemind'];
         fs.writeFileSync(path.join(tmp, '.claude', 'agents', 'hivemind.md'), 'legacy persona body\n');
       }],
       ['bare @.claude/persona-protocol.md line in CLAUDE.md', (tmp) => {

@@ -14,7 +14,7 @@ has() { # <file> <phrase>
 
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 git -C "$T" init -q
-(cd "$T" && node "$ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe >/dev/null 2>&1)
+(cd "$T" && node "$ROOT/bin/cli.js" --personas=spec-master,reviewer,scribe >/dev/null 2>&1)
 C="$T/.claude/persona-config.json"
 [ -f "$C" ] && [ "$(jq 'has("knowledgeWrites")' "$C")" = false ] && ok "fresh install has no knowledgeWrites" || bad "fresh install has no knowledgeWrites"
 # A recorded graph launch command keeps explorer.md renderable, so --dry-run can reach its exit code.
@@ -50,12 +50,12 @@ case "$err" in *'takes the form --knowledge-writes=<scoped|apply>'*) ok "space f
 [ "$(sha256sum "$C" | cut -d' ' -f1)" = "$before" ] && ok "space form leaves config unchanged" || bad "space form leaves config unchanged"
 F1=$(mktemp -d); F2=$(mktemp -d); F3=$(mktemp -d); F4=$(mktemp -d); trap 'rm -rf "$T" "$F1" "$F2" "$F3" "$F4"' EXIT
 for d in "$F1" "$F2" "$F3" "$F4"; do git -C "$d" init -q; done
-(cd "$F1" && node "$ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe --knowledge-writes=apply >/dev/null 2>&1)
+(cd "$F1" && node "$ROOT/bin/cli.js" --personas=spec-master,reviewer,scribe --knowledge-writes=apply >/dev/null 2>&1)
 [ "$(jq -r .knowledgeWrites "$F1/.claude/persona-config.json" 2>/dev/null)" = apply ] && ok "fresh install honours --knowledge-writes=apply" || bad "fresh install honours --knowledge-writes=apply"
-(cd "$F2" && node "$ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe --knowledge-writes apply >/dev/null 2>&1); rc=$?
+(cd "$F2" && node "$ROOT/bin/cli.js" --personas=spec-master,reviewer,scribe --knowledge-writes apply >/dev/null 2>&1); rc=$?
 [ "$rc" = 2 ] && [ ! -e "$F2/.claude" ] && ok "fresh-install space form exits 2 and writes nothing" || bad "fresh-install space form (rc=$rc)"
-(cd "$F3" && node "$ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe >/dev/null 2>&1)
-(cd "$F4" && node "$ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe >/dev/null 2>&1)
+(cd "$F3" && node "$ROOT/bin/cli.js" --personas=spec-master,reviewer,scribe >/dev/null 2>&1)
+(cd "$F4" && node "$ROOT/bin/cli.js" --personas=spec-master,reviewer,scribe >/dev/null 2>&1)
 (cd "$F3" && node "$ROOT/bin/cli.js" --update >/dev/null 2>&1); rc_plain=$?
 out=$(cd "$F4" && node "$ROOT/bin/cli.js" --update --knowledge-writes=scoped 2>&1); rc_flag=$?
 [ "$rc_flag" = "$rc_plain" ] && ok "pristine --update exit code is the render's with or without the flag ($rc_flag)" || bad "exit code differs: plain $rc_plain flag $rc_flag"

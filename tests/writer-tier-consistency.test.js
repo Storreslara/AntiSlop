@@ -49,12 +49,6 @@ check('AC-D5: README.md persona table lists lead-programmer as haiku', () => {
   assert.ok(/\|\s*haiku\s*\|/.test(row), `expected haiku in README row, got: ${row}`);
 });
 
-check('AC-D5: agents/task-master.md default tag is haiku, not sonnet', () => {
-  const text = read('agents/task-master.md');
-  assert.ok(text.includes('`haiku` is\n  the default for every unit'), 'task-master.md does not state haiku as the default tag');
-  assert.ok(!text.includes('`sonnet` is\n  the default'), 'task-master.md still states sonnet as the default tag');
-});
-
 check('AC-D5: CONTEXT.md Implementer-tier ratchet reads two attempts per tier, haiku→sonnet→opus', () => {
   const text = read('CONTEXT.md');
   assert.ok(text.includes('two attempts per tier, `haiku`→`sonnet`→`opus`'), 'CONTEXT.md does not state the two-attempts-per-tier ratchet');
@@ -62,9 +56,9 @@ check('AC-D5: CONTEXT.md Implementer-tier ratchet reads two attempts per tier, h
 });
 
 check('AC-D6: no surface instructs pre-emptive "looks mechanical" tier tagging', () => {
-  for (const rel of ['agents/task-master.md', 'agents/orchestrator.md', 'agents/lead-programmer.md',
+  for (const rel of ['agents/orchestrator.md', 'agents/lead-programmer.md',
     'adapters/cursor/agents/lead-programmer.md', 'adapters/codex/agents/lead-programmer.toml',
-    '.claude/agents/task-master.md', '.claude/agents/orchestrator.md', '.claude/agents/lead-programmer.md']) {
+    '.claude/agents/orchestrator.md', '.claude/agents/lead-programmer.md']) {
     const text = stripWhitespace(read(rel));
     assert.ok(!/looksmechanical/i.test(text),`${rel} contains a "looks mechanical" pre-emptive tagging reference`);
   }
@@ -130,28 +124,6 @@ check('AC-D9: agents/spec-master.md never tags the re-scoped step for haiku', ()
   assert.ok(!text.includes(stripWhitespace('never tags the re-scoped step')), 'spec-master.md still contains the vacuous never-tags-the-re-scoped-step clause');
 });
 
-// AC-D9b: the banned-literal checks above only look at orchestrator.md and
-// spec-master.md in isolation. The real invariant is that orchestrator.md's
-// stated `Suggested model` vocabulary must agree with task-master.md's
-// actual vocabulary line — pin that agreement explicitly, rather than a
-// standalone ban, so a future change to task-master.md's vocabulary (e.g.
-// re-adding haiku) is caught even if orchestrator.md is never touched.
-function suggestedModelVocabulary(text, label) {
-  const m = stripWhitespace(text).match(/Suggestedmodel:([a-z]+(?:\|[a-z]+)+)/);
-  assert.ok(m, `could not find a Suggested model vocabulary list in ${label}`);
-  return m[1];
-}
-
-check('AC-D9b: agents/orchestrator.md Suggested model vocabulary agrees with agents/task-master.md', () => {
-  const taskMasterVocab = suggestedModelVocabulary(read('agents/task-master.md'), 'agents/task-master.md');
-  const orchestratorVocab = suggestedModelVocabulary(read('agents/orchestrator.md'), 'agents/orchestrator.md');
-  assert.strictEqual(
-    orchestratorVocab,
-    taskMasterVocab,
-    `orchestrator.md states "${orchestratorVocab}" but task-master.md's actual vocabulary is "${taskMasterVocab}"`,
-  );
-});
-
 // AC-T1 / AC-A1 (rgh-h8, contract-hardening H8).
 // fc-4 G1: read a key from the frontmatter block only (shaped like default-implementer-model's frontmatterModel).
 function frontmatterKey(text, key) {
@@ -160,8 +132,8 @@ function frontmatterKey(text, key) {
   return m ? m[1] : null;
 }
 
-check('AC-T1: spec-master and task-master run with maxTurns: 120', () => {
-  for (const rel of ['agents/spec-master.md', 'agents/task-master.md']) {
+check('AC-T1: spec-master runs with maxTurns: 120', () => {
+  for (const rel of ['agents/spec-master.md']) {
     assert.strictEqual(frontmatterKey(read(rel), 'maxTurns'), '120', `${rel} frontmatter does not pin maxTurns: 120`);
   }
 });
@@ -193,11 +165,6 @@ function hasAll(rel, needles) {
 check('AC-P1: orchestrator.md keeps its guarded text and the fc-2 rules', () => {
   hasAll('agents/orchestrator.md', ['At the 2-FAIL cap', '**Escalation ladder.**',
     '## Milestone audit gate', 'Gate for item 3']);
-});
-
-check('AC-P2: task-master.md names the nine dispatch-contract markers H4 checks', () => {
-  hasAll('agents/task-master.md', ['Unit:', '## Objective', '## Retrieval', '## Affected files', '## Ordered edits',
-    '## Do NOT touch', '## Acceptance criteria', '## Pre-resolved context', '## Escalation']);
 });
 
 check('AC-P3: scribe and lead-programmer keep their contract bullets', () => {
