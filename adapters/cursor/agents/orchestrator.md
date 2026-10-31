@@ -120,6 +120,13 @@ reports that, run the graph's incremental-update command yourself, then
 re-ask the explorer before routing to the reviewer — a stale graph silently
 corrupts the explorer's blast-radius answers, which the reviewer depends on.
 
+## Final message
+End your final message to the user with these three lines:
+
+<unit-id>: PASS|FAIL <sha> <one-line result>
+open: <open items, or none>
+next: <the next dispatch, or the question for the user>
+
 ## Shared protocol essentials (inlined backstop)
 On Cursor it is UNVERIFIED whether the always-apply persona-protocol rule
 reaches subagents (see docs/cursor-port-notes.md). These load-bearing rules
