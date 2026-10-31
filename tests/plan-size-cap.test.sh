@@ -30,7 +30,7 @@ fi
 for f in "$PLANS_DIR"/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.md; do
   [ -f "$f" ] || continue
   b=$(basename "$f"); [ "$(( 10#$(echo "${b:0:10}" | tr -d -) ))" -ge "$CUTOFF" ] || continue
-  bytes=$(wc -c < "$f"); lines=$(wc -l < "$f")
+  bytes=$(wc -c < "$f"); lines=$(awk 'END{print NR}' "$f")
   if [ "$bytes" -gt 25600 ] || [ "$lines" -gt 400 ]; then
     echo "FAIL $f: $bytes bytes, $lines lines (max 25600 bytes, 400 lines)"; fail=1
   fi
@@ -39,7 +39,7 @@ for f in "$PLANS_DIR"/*/contracts/*.md; do
   [ -f "$f" ] || continue
   slug=$(basename "$(dirname "$(dirname "$f")")")
   d=$(echo "${slug:0:10}" | tr -d -)
-  case "$d" in [0-9]*) ;; *) continue;; esac
+  [[ $d =~ ^[0-9]{8}$ ]] || continue
   [ "$d" -ge "$CUTOFF" ] || continue
   bytes=$(wc -c < "$f")
   if [ "$bytes" -gt 3072 ]; then echo "FAIL $f: $bytes bytes (max 3072)"; fail=1; fi

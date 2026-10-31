@@ -186,6 +186,9 @@ gate_run() {
     | CLAUDE_PROJECT_DIR="$gproj" bash "$gate" >/dev/null 2>"$tmproot/stderr"
 }
 
+# Since lean-pipeline D5 both path gates allow every Bash command, so this loop,
+# the design-constraint proof and the human-decision-gate loop below can no longer fail
+# and are kept as smoke checks.
 for id in reviewer antislop:reviewer; do
   rc=0; gate_run "$gate_rpg" "$id" || rc=$?
   if [ "$rc" = 0 ]; then

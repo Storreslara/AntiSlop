@@ -102,16 +102,14 @@ personas as concurrent teammates instead; off by default.
 | `gatedAgents` | `["lead-programmer"]` | Personas whose stop raises a pending-review flag. |
 | `defaultImplementerModel` | `haiku` | Tier the escalation ladder starts from. |
 | `orchestratorModel` | `sonnet` | Model of the main session (the orchestrator): `sonnet`, `opus`, `haiku` or `inherit` (your own session model). Apply a change with `node <plugin>/bin/cli.js --update --force-render`. |
-| `humanReviewMode` | `critical` | `critical`: heavy units are escalated to you before PASS; `all`: every PASS; `off`: never. |
+| `humanReviewMode` | `critical` | Retired (0.32.0): nothing escalates; only session-start's microworld warning reads it. |
 | `reviewGating.mode` | `enforce` | `off` makes reviewer verdicts advisory and the review gates inert. Flip with `/antislop:gate off` or `on`. |
 
 `pluginVersion`, `personaSelection`, `substitutions` and `fileHashes` are
 written by install and update; leave them alone. The file is protected: an
-edit prompts for confirmation and shows as config drift until committed. An
-escalated unit lands in `.claude/human-review/<task-id>/`; you resolve it with
-a `DECISION` file from the terminal, the dashboard
-(`node bin/cli.js --dashboard`), or the orchestrator's proposed heredoc at the
-permission prompt (ADR-0004, ADR-0013, ADR-0039).
+edit prompts for confirmation and shows as config drift until committed. A
+unit that needs you reaches you as a `needs-human:` note, which the orchestrator
+relays with `AskUserQuestion`.
 
 `bash tests/validate.sh`, the usual `testAndLintCommand`, prints only failures,
 warnings, skips and unclassified output, then a `Full log:` path; pass

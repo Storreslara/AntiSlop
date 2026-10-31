@@ -7,7 +7,7 @@
 # its review-gating mode switch - ever: that config sits in the protected
 # set below, so the file that may be gone cannot also be this gate's own
 # precondition (spec 6 D0 names this exemption explicitly). No grant
-# branch, no identity exemption. Precedent: human-decision-gate.sh:2-5.
+# branch, no identity exemption.
 #
 # Five of the paths below route through a human-confirmation branch instead
 # of an outright deny: the persona-selection config (Set A's one ask-eligible
