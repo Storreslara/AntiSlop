@@ -102,20 +102,20 @@ clarify intent is fine.
   inline only when `knowledgeWrites` is `apply` or the request names `CONTEXT.md`; otherwise record it in
   the plan's Scribe update hint as a knowledge proposal;
   when a decision meets `domain-modeling`'s three ADR tests, draft the ADR
-  into this plan's Context section and leave numbering and landing to
+  into this plan's Decisions and leave numbering and landing to
   `scribe`, whose custody of `docs/adr/` is unchanged.
 - **Check `.claude/reviewed/` for `.fail` records and non-blocking notes
   before revising a plan.** A prior FAIL on a unit you're re-scoping is
   durable evidence it needed more judgment than you previously estimated —
   flag that explicitly so the re-scoped step is never tagged for
   a tier cheaper than the Implementer-tier ratchet allows,
-  and name the prior defect history explicitly in Context/Risks
+  and name the prior defect history explicitly in the plan's Decisions
   rather than silently re-proposing the same approach. At 6 or more units, before writing any
   follow-up spec, also run one `bash bin/marker-audit.sh . --notes
   --surface=<path>` per file or directory the new plan touches; every
   returned `NOTE[spec]` line, and every `untagged` line naming a step not yet
-  dispatched, is a required input whose disposition you record in the plan's
-  Context or Risks section. The sweep is best-effort, never authority:
+  dispatched, is a required input whose disposition you record in `appendix.md`.
+  The sweep is best-effort, never authority:
   `.claude/reviewed/` is gitignored, untracked per-clone state with no
   history and no recovery source, so a note absent from the sweep may simply
   never have existed in this clone — never treat an empty sweep as proof that
@@ -124,8 +124,7 @@ clarify intent is fine.
   it before drafting. At 6 or more units the check goes to `appendix.md`; below
   6 units it is not written. It is a section of its own — literally
   headed `## Constitution check (.claude/constitution.md vX.Y.Z)`, its own
-  heading, never folded into Context or Risks prose — placed after the
-  Risks/dependencies section and before Step 1. One line per MUST
+  heading, never folded into plan prose — written to `appendix.md`. One line per MUST
   principle: `- P<n> "<principle name>": satisfied` or `- P<n> "<principle
   name>": deviation — <justification>`; an unjustifiable deviation goes to
   Open Questions instead. Example:
@@ -214,16 +213,15 @@ clarify intent is fine.
   interview (do not interview the user — that's `grilling`'s job, already
   done by this point). Map the finished plan onto `## Appendix: PRD template`
   (below) as an equivalent shape, not a rewrite: Goal → Problem Statement;
-  Context → Solution; numbered Steps → User Stories; Constitution check →
+  Decisions → Solution; numbered Steps → User Stories; Constitution check →
   Implementation Decisions; each step's acceptance-criteria commands → Testing
-  Decisions; anything explicitly deferred in Risks/Open Questions → Out of
-  Scope; the Clarifications log and Self-check itemization → Further Notes.
+  Decisions; Open Questions → Out of Scope; the Clarifications log and Self-check itemization → Further Notes.
   Publish the mapped artifact to the issue tracker named by the `issueTracker`
   field of `.claude/persona-config.json` (read the key with the `Read` tool),
   with the `ready-for-agent` label. Below 6 units there is no publish step. The saved `docs/plans/`
   document (below) remains the canonical artifact — publishing is
   additive, not a substitute for it.
-- **Emit the dispatch contracts**: once Self-check passes (and, where used, the plan is published to
+- **Emit the dispatch contracts**: once the plan is written (at 6 or more units, once Self-check passes and, where used, the plan is published to
   the tracker), spec-master `emits one five-field contract per unit` (any unit count) into
   `docs/plans/<plan-slug>/contracts/<unit-id>.md` (line 1 `Unit: <task-id>`, unfenced, nothing else
   before the headings), per the shared protocol's `## Dispatch contract (five fields)` section, commits
@@ -233,12 +231,12 @@ clarify intent is fine.
   issue-closing duty correctly does not fire (it requires an issue number in its dispatch). You never
   run `pathfinder` on any path (ADR-0003 preserved).
 - **Dispatch checkpoints.** There are three natural ones: (1) Open Questions
-  returned; (2) plan doc written and Self-check passed; (3) write and commit each contract file as soon as it is finished; after every 3
+  returned; (2) plan doc written (and, at 6 or more units, Self-check passed); (3) write and commit each contract file as soon as it is finished; after every 3
   contract files in one spawn, with contracts remaining, end with
   `STATUS: incomplete — checkpoint: <plan path>` (the plan's dispatch-section
   links show which are done). At (2), if the spec has more than 5 steps, end
   the turn with `STATUS: incomplete — checkpoint: <plan path>` and leave the
-  next phase to a fresh spawn. Decisions live in the plan's Clarifications and Context, never in
+  next phase to a fresh spawn. Decisions live in the plan's Decisions and `appendix.md`, never in
   the transcript. A checkpoint is not a failure, and it is not the WIP sentinel
   (you are not a gated agent).
 - **Convergence follow-ups**: when re-invoked to close an accepted

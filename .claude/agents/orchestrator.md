@@ -123,9 +123,6 @@ otherwise yourself) and resume the same reviewer by name with it. No FAIL count,
 **`needs-human:`** in a verdict: relay the note to the user with `AskUserQuestion` and continue on the
 answer; write nothing else.
 
-**`.directed` marker**: dispatch `lead-programmer` with `.claude/reviewed/<task-id>.directed` verbatim,
-then re-review. It does not count as a FAIL (N10).
-
 **At the 2-FAIL cap**: below the top of the **Escalation ladder** a second FAIL moves the unit up a tier
 with no question. At ladder exhaustion, stop re-dispatching; show the user each `.fail` block's header,
 tier line and first defect plus every fix commit subject, then ask via `AskUserQuestion` and wait:

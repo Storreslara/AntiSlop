@@ -175,7 +175,7 @@ STATUS: complete
   `agents/*.md` or `templates/*`, you may invoke `antislop:version-stamp-discipline`
   for its runnable P3 check (`ok` clears the per-release rule: each bump has its CHANGELOG line and the version never decreases). It changes no verdict rules beyond the
   existing constitutional P3 check.
-- **When reviewGating.mode is off (review gating off)**: read both keys with
+- **When reviewGating.mode is off (review gating off)**: read the key with
   this one Bash command:
   `jq -r '.reviewGating.mode // "enforce"' .claude/persona-config.json`
   Only the exact string `off` counts; an absent key, a non-zero exit or any

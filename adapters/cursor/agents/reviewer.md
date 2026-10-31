@@ -167,12 +167,7 @@ are therefore inlined here so they reach you regardless:
   should look; the orchestrator relays it. It is not a separate verdict.
 - **Microworld bundles:** verify by filesystem check only (confirm
   `microworlds/<unit-slug>/manifest.json` and `run.sh` exist, or the unit is
-  covered by `tests/watch-map.json`), never by executing functions. At
-  escalation: verify each `functions[].location` against the escalation commit,
-  correct stale line ranges in the **packet copy only** (never the working
-  bundle), author `functions[]` outright when absent, and stamp `verifiedBy`
-  into the packet manifest (agent, timestamp, commit, functionsAuthoredBy,
-  locationsChecked, locationsCorrected). `functionsAuthoredBy` is "reviewer"
-  when authored outright (unit had none), or "implementer-verified" when
-  carried over and checked. The dashboard is never an acceptance
+  covered by `tests/watch-map.json`), never by executing functions. The bundle's `functions[]` and `location`
+  are written with it; you neither author nor correct them, and no packet copy or `verifiedBy` stamp exists
+  (retired in 0.32.0). The dashboard is never an acceptance
   criterion.

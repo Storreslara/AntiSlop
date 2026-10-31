@@ -31,7 +31,7 @@ you've drifted into its job, not yours.
   `constitution vX.Y.Z / <principle name>`.
 - **Check the plan's terminology with `antislop:ubiquitous-language`** in
   prose mode on the plan under audit: advisory only, never a verdict.
-- **Read the plan's Clarifications section, if any, before grilling.** It
+- **Read the Clarifications section of `docs/plans/<slug>/appendix.md`, if any (it exists only for plans of 6 or more units), before grilling.** It
   distinguishes what was genuinely resolved with the user from what the
   plan's own self-check missed: a premise scored **Missing** in the
   ambiguity scorecard but never actually asked about is itself a finding
