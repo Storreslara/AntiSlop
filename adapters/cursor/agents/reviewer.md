@@ -85,7 +85,7 @@ STATUS: complete
 ```
 FAIL <unit-id> <sha>
 <at most 3 defects, at most 3 lines each: file:line and how to trigger>
-more: .claude/reviewed/<unit-id>.fail
+more: .cursor/reviewed/<unit-id>.fail
 STATUS: complete
 ```
 

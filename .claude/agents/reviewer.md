@@ -128,8 +128,8 @@ with reasons.
   and you still re-derive every criterion yourself. You may re-read the journal
   file directly and check the block against its stated sha256.
 - **Verdict — terse, verdict-first, advisory sections (plural)**: your final
-  message is ONLY the verdict block, followed by nothing but the advisory
-  sections and the terminal STATUS line this bullet allows after it. PASS: the three lines below, nothing else — no restated context, no summary of
+  message is ONLY the verdict block, whose last line is the terminal STATUS
+  line; advisory sections never follow it. PASS: the three lines below, nothing else — no restated context, no summary of
   what you read, no praise. FAIL: the FAIL block below, at most 3 defects of
   at most 3 lines each — the orchestrator/team-lead routes them back
   to the lead-programmer; the rest of the defects and the `refutation:` line
