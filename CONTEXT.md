@@ -47,7 +47,7 @@ superseded terminology — see [[effort override / effort tier]].
 **Persona**:
 a subagent system prompt in `agents/*.md`. "Core" personas
   (orchestrator, explorer, lead-programmer) are always installed; "optional"
-  personas (spec-master, task-master, scribe, reviewer, researcher,
+  personas (spec-master, scribe, reviewer, researcher,
   milestone-auditor, agent-auditor) are selected per-project during ADAPT. `spec-master`
   turns ambiguous goals into precise specs via grilling and publishes through
   its own [[PRD template]] appendix (formerly the `to-spec` skill); `task-master`
@@ -61,6 +61,14 @@ a subagent system prompt in `agents/*.md`. "Core" personas
   surfaces observations; read-only and non-gating, it issues no verdict unlike `reviewer`
   and never audits the plan itself unlike `milestone-auditor`.
   Archived originals (skills audit, 2026-10-14): `docs/archive/skills/to-spec/`.
+
+**task-master**:
+Retired (0.32.0): the persona was deleted (plan 2026-10-30-lean-pipeline).
+  It sliced a finalized spec into units and wrote their nine-element
+  contracts and fix contracts. spec-master now writes one
+  [[five-field contract]] per unit, and the orchestrator writes the
+  [[fix contract]]. The name stays a legacy `--personas` and
+  `personaSelection` token that maps to spec-master.
 
 **Version-stamped file**:
 any ADAPT-copied file carrying a
@@ -128,6 +136,7 @@ the semantics of adding an
   silently drop every other already-selected one.
 
 **version-stamp discipline**:
+Superseded (0.31.227): the rule is per [[release]] (plan 2026-10-30-lean-pipeline, constitution P3 v1.2.0). A content commit needs no bump; `version-stamp-check.sh` checks only that a bumping commit adds a CHANGELOG line naming its version and that the version never decreases. The per-commit rule below, including the within-range check, is history.
 (constitution P3; unit reviewer-changes-examples-lean-2, 2026-09-23) — a
   merge-gate procedural rule requiring that any edit to an `agents/*.md` or
   `templates/` file must be accompanied by a version bump (incrementing
@@ -157,6 +166,17 @@ the semantics of adding an
   somewhere in between (e.g. a later, unrelated commit). The endpoint `old`/`new`
   fields in the output remain informational only. See row 25 of `docs/trust-model.md`.
 
+**release**:
+(plan 2026-10-30-lean-pipeline, constitution P3 v1.2.0) — one commit that
+  bumps `version` in `.claude-plugin/plugin.json` and `package.json` and adds
+  a CHANGELOG line naming the new version (from 0.32.0 on, a
+  `## [<version>] - <date>` heading). Content commits between releases carry
+  no bump and may add `[Unreleased]` bullets. The version never decreases.
+  Projects running `--update` receive content changes at releases only.
+  Also called a bumping commit (the wording of the lead-programmer and
+  scribe personas and the version-stamp-discipline skill).
+_Avoid_: per-commit bump
+
 **whole version**:
 (unit lov-1, 2026-10-14) — how a CHANGELOG entry must name a version for
   [[version-stamp discipline]] to count it: the version's dots are literal,
@@ -183,6 +203,7 @@ the system's core safety property: the
   [ADR-0038](docs/adr/0038-review-gating-runtime-switch.md).
 
 **review gating off** (everyday name: *gateless mode*):
+Amended (0.32.0): `stop-gate.sh` exits at once under `off` and runs no test+lint check, so that check is not among the armed gates listed below (unit lp-stopgate).
 (unit rgo-5, 2026-09-29) — the project state where `reviewGating.mode` in
   `.claude/persona-config.json` is exactly `off`. Reviewer verdicts are
   advisory, and the review-enforcement and human-escalation gates are inert;
@@ -231,6 +252,7 @@ a hook script that mechanically blocks an action rather than
 _Avoid_: marker-directory gate
 
 **Reporter**:
+Amended (0.32.0): `stop-gate.sh` no longer surfaces deferred results (unit lp-stopgate); `session-start.sh` is the only reader.
 (unit #132, 2026-08-10) — a hook script that observes and logs an
   action without blocking it; the formal antonym of **Gate**. Unlike a gate,
   which refuses an action, a reporter permits it and records metadata in an
@@ -484,6 +506,15 @@ _Avoid_: contract (alone: a fix contract is a different artifact), dispatch prom
   **legacy layout** (contract embedded in the plan file or in a fenced issue-body
   block) remains a fallback only for units sliced before this change.
 _Avoid_: dispatch prompt, contract block (the legacy embedded form)
+
+**five-field contract**:
+(plan 2026-10-30-lean-pipeline, 0.32.0) — the dispatch contract a writer
+  receives: `Unit: <id>` on line 1, then `## Objective`, `## Affected files`,
+  `## Do NOT touch` and `## Acceptance criteria` (numbered `run:` lines), at
+  most 3,072 bytes, kept in its [[contract file]]. spec-master writes one per
+  unit; after a FAIL the orchestrator writes the [[fix contract]] in the same
+  shape. An optional `## Ordered edits` section is kept for a haiku writer.
+_Avoid_: nine-element contract (the form task-master wrote)
 
 **dispatch checkpoint**:
 (unit ptr-u8, 2026-10-16) — a deliberate turn-end of `task-master` or
@@ -986,6 +1017,7 @@ the collection of addressable **Agent** entities currently active in a
   the model but never blocks the edit itself.
 
 **Escalation packet**:
+Retired (0.32.0): no packet is written any more; a [[needs-human note]] replaces it (ADR-0044).
 (unit #131, 2026-08-10, mechanism defined in unit #133, 2026-08-10; refreshed
   unit #138, 2026-08-11) — a directory structure created when a reviewer
   signals `ESCALATE-TO-HUMAN` on a unit, containing a snapshot of the unit's
@@ -1031,6 +1063,7 @@ the collection of addressable **Agent** entities currently active in a
   _Avoid_: colour viewer, packet renderer (use "packet viewer", or name `view.sh`)
 
 **ESCALATE-TO-HUMAN**:
+Retired (0.32.0): the reviewer has three verdicts, and a [[needs-human note]] replaces this one (ADR-0044).
 (unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — the fourth reviewer
   verdict, signaling that a unit the reviewer would otherwise pass requires
   human review before a final decision. Verdict precedence is: `FAIL` >
@@ -1047,6 +1080,15 @@ the collection of addressable **Agent** entities currently active in a
   #325/#326/#136) through one of three terminal transitions (approve, reject
   with reason, direct with a prescribed fix), each deleting the `.escalated`
   marker and its packet. Never consumes a 2-FAIL-cap slot.
+
+**needs-human note**:
+(plan 2026-10-30-lean-pipeline, 0.32.0) — an optional line
+  `needs-human: <one line>` that the reviewer adds to its verdict when a
+  decision belongs to the user. It does not change the verdict (PASS, FAIL
+  or INSUFFICIENT-CONTEXT). The orchestrator relays it with AskUserQuestion
+  and continues on the answer. No marker, packet, card or gate is written.
+  It replaces [[ESCALATE-TO-HUMAN]] (ADR-0044).
+_Avoid_: escalation, fourth verdict
 
 **per-clone review state**:
 (unit lov-1, 2026-10-14) — the [[PASS marker]]s, [[FAIL record]]s and other
@@ -1192,6 +1234,7 @@ _Avoid_: refutation verdict
 _Avoid_: refutation audit, refutation spot-check
 
 **`.escalated` marker**:
+Retired (0.32.0): no reviewer writes this marker any more; see [[needs-human note]] (ADR-0044).
 (unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — file written by the
   reviewer at `.claude/reviewed/<task-id>.escalated` when issuing an
   `ESCALATE-TO-HUMAN` verdict, carrying the marker body as fixed-shape text.
@@ -1211,6 +1254,7 @@ _Avoid_: refutation audit, refutation spot-check
   point both marker and packet are deleted in the same reviewer action.
 
 **escalation card**:
+Retired (0.32.0): it went with the `.escalated` marker; see [[needs-human note]] (ADR-0044).
 (epa-4, 2026-10-12) — the fixed six-line top of an `.escalated` marker body,
   below line 1: `why:`, `would-be verdict:`, `look first:`, `decide:`, `run:`
   and `packet:`, in that order, one line each. A single `---` fold line
@@ -1231,6 +1275,7 @@ _Avoid_: refutation audit, refutation spot-check
   _Avoid_: separator, divider, horizontal rule
 
 **`.directed` marker**:
+Amended (0.32.0): a reviewer stop clears every pending-review flag whatever the verdict, so `.blocked` no longer keeps a flag standing (unit lp-stopgate).
 (unit #136, 2026-08-11, Step 7 of the human-decision-channel fix, issue #324) —
   file written by the reviewer at `.claude/reviewed/<task-id>.directed` when
   transcribing a human `route: direct` [[DECISION file]] resolution. First line

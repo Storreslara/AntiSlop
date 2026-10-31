@@ -315,6 +315,7 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   file]], [[`--update` semantics]].
 
 **per-commit semantics**:
+Retired (0.31.227): `version-stamp-check.sh` no longer checks each commit against its parent; the version-stamp discipline is per release (constitution P3 v1.2.0, plan 2026-10-30-lean-pipeline).
 (unit version-stamp-check-roast-1, 2026-09-23) — a measurement discipline where a
   property or invariant is checked against each individual commit within a range
   against its own immediate parent, rather than comparing only the range's two
@@ -542,6 +543,7 @@ _Avoid_: escape hatch, grant branch
   `docs/trust-model.md` row 11 for the asymmetry bounded here.
 
 **grant-denied**:
+Amended (0.32.0): `stop-gate.sh` no longer writes this record (unit lp-stopgate); `reviewed-path-gate.sh` still does.
 an append-only audit-log record class written to
   `.claude/review-audit.log` by `reviewed-path-gate.sh` and `stop-gate.sh`
   (both main hooks and both adapter ports) whenever a privilege is denied to
@@ -608,6 +610,7 @@ an append-only audit-log record class written to
   membership.
 
 **Microworld audit log**:
+Amended (0.32.0): `stop-gate.sh` no longer surfaces failures (unit lp-stopgate); `session-start.sh` is the only reader.
 (unit #132, 2026-08-10) — an append-only log file at
   `.claude/microworld-audit.log` (+ per-adapter equivalents
   `.cursor/microworld-audit.log`, `.codex/microworld-audit.log`) recording
@@ -686,16 +689,13 @@ an append-only audit-log record class written to
   be grep-verifiable.
 
 **fix contract**:
-(unit rgh-h10, 2026-10-07) — a nine-element dispatch contract that task-master,
-  if present, writes for the same `Unit:` id from the latest FAIL block: literal
-  edits, the original criteria plus one criterion per defect,
-  `fix-of: <FAIL header timestamp>`, and `diagnosis: none`. task-master does the
-  diagnosis itself; if it cannot determine the cause, it writes no fix contract
-  and reports a spec gap. The orchestrator dispatches task-master between the FAIL
-  verdict and the fix dispatch (`agents/orchestrator.md` **Fix-contract
-  re-dispatch**), and lead-programmer applies [[contract precedence]] to it
-  (`agents/lead-programmer.md` **Fix turns**). Defined in `agents/task-master.md`
-  bullet **Fix contract**.
+(unit rgh-h10, 2026-10-07; rewritten plan 2026-10-30-lean-pipeline, 0.32.0)
+  — a [[five-field contract]] for the same `Unit:` id that the orchestrator
+  writes after a FAIL, from the latest FAIL block. Its first `## Objective`
+  line is `fix-of: <FAIL header timestamp>`, and it keeps the original
+  criteria plus one criterion per defect. lead-programmer applies
+  [[contract precedence]] to it. Before 0.32.0, task-master wrote it as a
+  nine-element contract.
 
 **SPEC-GAP: token**:
 (unit fc-5, 2026-10-07) — the literal prefix of a spec-gap report: its first line
@@ -901,6 +901,7 @@ an append-only audit-log record class written to
 _Avoid_: classifier result (use specific state names or "Marker classifier states")
 
 **Marker audit-log states**:
+Retired (0.32.0): no hook calls `marker-commit-check.sh` any more, so no hook writes these states (unit lp-stopgate); the script stays callable by hand.
 (unit #385, 2026-08-15) — the set of possible state values written to `.claude/review-audit.log`
   when `marker-commit-check.sh` is consulted. Superset of [[Marker classifier states]];
   includes three states from the classifier (`ok`, `mismatch`, `unverifiable`) plus a
@@ -911,6 +912,7 @@ _Avoid_: classifier result (use specific state names or "Marker classifier state
   by `stop-gate.sh` when running in `warn` or `block` mode per [[markerCommitCheck.mode]].
 
 **markerCommitCheck.mode**:
+Retired (0.32.0): no hook reads this key since `stop-gate.sh` stopped calling `marker-commit-check.sh` (unit lp-stopgate).
 (unit #385, 2026-08-15) — configuration key in `.claude/persona-config.json` (schema:
   `templates/persona-config.schema.json`, paths: `dispatchHygiene` sibling) controlling
   `stop-gate.sh`'s behavior when `marker-commit-check.sh` runs. Defined modes: `off`
@@ -938,6 +940,7 @@ _Avoid_: classifier result (use specific state names or "Marker classifier state
   for specifics per program (not repeated here to avoid exploit-adjacent detail).
 
 **Dispatch hygiene**:
+Amended (0.32.0): the review-join stamps named below are gone and a reviewer stop clears every flag whatever the verdict (unit lp-stopgate); `dispatch-hygiene.sh` now touches the writer-dispatch stamp at each gated writer dispatch.
 the **Gate** applied at the `PreToolUse`/`Agent`
   seam by `hooks/scripts/dispatch-hygiene.sh`: it checks a dispatch prompt
   *before* the spawn happens, rather than a turn's output at its end like
@@ -1130,6 +1133,7 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   inert once nothing reads it and requires no migration.
 
 **review-join stamp**:
+Retired (0.32.0): the stop gate keeps one pending-review flag check and no longer writes or reads these stamps (ADR-0044).
 (0.28.0+) `.claude/.review-join.<unit-id>`, one per
   unit currently under review. Written unconditionally by `reviewer-route-gate.sh`
   for any non-advisory reviewer dispatch carrying a well-formed `Unit:` line, and
@@ -2219,6 +2223,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   (a single invocation record).
 
 **The human-decision gate** (`human-decision-gate.sh`):
+Retired (0.32.0): the gate was deleted together with the escalation verdict (ADR-0044).
 (unit #325, 2026-08-11, Step 1 of #324; extended units hdg-lexer-1, hdg-prose-2,
   hdg-prose-2-fix2, 2026-08-24) — the new `PreToolUse` hook (`Write|Edit` and
   `Bash` matchers) that blocks **every** agent identity from writing a [[DECISION
@@ -2613,6 +2618,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   unless a `.escalated` marker stands (see [[The human-decision gate]]).
 
 **frozen family table**:
+Retired (0.32.0): its rows lived in the gate's test suite, deleted with the gate (unit lp-hdg), and `tests/validate.sh` no longer checks its pins (ADR-0044).
 (esc-left-3, esc-left-4, 2026-10-04) — the fixed list of F-1 spellings that
   [[The human-decision gate]] closed in esc-left-3: unquoted glob and brace
   words that expand to the `human-review` directory or the DECISION file
@@ -3402,6 +3408,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 (unit ptr-u7a, 2026-10-16) — the three-line stderr `hooks/scripts/reviewed-path-gate.sh` prints when it blocks a non-reviewer write to the reviewed-markers directory, on its Write/Edit branch and on its Bash branch: line 1 names what was blocked and why, line 2 gives the remedy (`grep -r` to search, `git commit -F <file>` to commit a message that names the path, a trailing `#` comment to narrate) and keeps the self-authorized bypass sentence, line 3 is `More: docs/harness-glossary.md — "reviewed-path denial"`, a pointer to this entry. At most 70 words, pinned by the denial-message-shape cases of `tests/reviewed-path-gate.test.sh`. The explanatory text the shortened message replaced, verbatim (Write/Edit branch): `BLOCKED: '${agent_type}' may not write '${subject}' - only the reviewer creates .pass/.fail/.blocked records in .claude/reviewed/ (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Every Write/Edit into that directory is a write by definition, so the read-only exemption that applies to Bash commands does not apply here.` Verbatim (Bash branch): `BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path in a gh issue/pr comment ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced quote, a backslash escape and a heredoc are never assumed benign). Note that 'git' and 'rg' are NOT allowlisted at all, whatever the subcommand - see program_allowed() for why. To land a commit whose MESSAGE discusses this path, put the message in a file and use 'git commit -F <file>'; to search the directory, use 'grep -r'. Any other route to this path is a self-authorized bypass whether or not this gate blocks it; if the sanctioned route does not fit, report the block and wait. A mention that only NARRATES the directory is allowed outright and needs no workaround: a trailing '#' comment naming it passes provided the rest of the command is itself allowlisted, since bash discards the comment but still runs everything else. What you hit is narrower - this command's text spells the path where bash would act on it (in code, in a quoted word, or as a redirection target), or it could not be lexed at all. A comment on a line of its OWN still fails closed; that is a ratified residual (issue #183), so keep the comment on the same line as the command.` The trigger logic is unchanged. Not the **decision-gate denial**.
 
 **decision-gate denial**:
+Retired (0.32.0): `human-decision-gate.sh` was deleted, so this denial no longer occurs (ADR-0044).
 (unit ptr-u7a, 2026-10-16) — the three-line stderr `deny()` in `hooks/scripts/human-decision-gate.sh` prints when any agent identity tries to write the DECISION file of a human-review packet: line 1 names what was blocked and why, line 2 names the **sanctioned marker-write template**, keeps the `rm -rf` packet-discard route and the self-authorized bypass sentence, line 3 is `More: docs/harness-glossary.md — "decision-gate denial"`, a pointer to this entry. At most 70 words, pinned by the denial-message-shape cases of `tests/human-decision-gate.test.sh`. The explanatory text the shortened message replaced, verbatim (whitespace collapsed to single spaces): `BLOCKED: '%s' may not write .claude/human-review/<task-id>/DECISION - that file records the human's own resolution of a pending escalation and no agent identity may create or modify it, reviewer included. If you are writing a review marker whose body must quote that path verbatim, use the sanctioned marker-write template - this gate allows it: cat > .claude/reviewed/<task-id>.pass <<'EOF' <marker body; the delimiter is single-quoted, so nothing here expands> EOF Rules: the delimiter must be single-quoted, the target a bare literal .claude/reviewed/<id>.{pass,fail,directed,blocked,escalated}, and the terminator the last line of the command. >> works in place of >. The human records a decision in the terminal or the dashboard, or - from the main session only - by approving the exact decision heredoc at Claude Code's permission prompt, which this gate asks for and never grants by itself. Any other route to it is a self-authorized bypass whether or not this gate blocks it; if no sanctioned route fits, report and wait. That rule governs commands TARGETING this file. A mention that only narrates it is allowed outright and needs no workaround: prose inside a single 'git commit' message, a single-quoted read pattern, and a trailing '#' comment all pass. What you hit is narrower - this command's text spells the path itself, or a mention sits where bash would execute it. To discard a resolved packet, delete the whole directory with 'rm -rf .claude/human-review/<task-id>'.` The trigger logic is unchanged. Not the **reviewed-path denial**.
 
 **ladder-tier reason word**:

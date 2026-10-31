@@ -12,12 +12,12 @@ happens on the npx/non-plugin scaffold path).
 | --- | --- | --- |
 | `graph-update.sh` | PostToolUse (Edit\|Write) | Incremental Code Review Graph update on the changed file; no-ops if graph isn't installed. Known gap: only reads `tool_input.file_path`, misses MultiEdit's array form / NotebookEdit. |
 | `lint-on-edit.sh` | PostToolUse (Edit\|Write) | Runs the project's configured formatter/linter (`persona-config.json`'s `lintCommand`) on the changed file only; no-ops if unconfigured. |
-| `marker-commit-check.sh` | Called from stop-gate.sh | Advisory classifier for PASS marker `commit:` field attribution — invoked at reviewer turn-end to verify the marker names the unit's own commit, not a sibling's. Prints `marker-commit-check=ok\|mismatch\|unverifiable` and **always exits 0** (never blocks). Configurable via `markerCommitCheck.mode`. See "Marker commit attribution verification" section below. |
+| `marker-commit-check.sh` | Run by hand (no hook calls it since 0.32.0, unit lp-stopgate) | Advisory classifier for PASS marker `commit:` field attribution — verifies the marker names the unit's own commit, not a sibling's. Prints `marker-commit-check=ok\|mismatch\|unverifiable` and **always exits 0** (never blocks). Configurable via `markerCommitCheck.mode`. See "Marker commit attribution verification" section below. |
 | `protected-paths.sh` | PreToolUse (Write\|Edit) | Blocks writes to configured `protectedPaths` (migrations, lockfiles, this repo's `.claude-plugin/*` etc.) pending human approval. Advisory only — covers Write/Edit, not Bash (`sed -i` bypasses it). |
 | `reviewed-path-gate.sh` | PreToolUse (Bash \| Write\|Edit) | Two matchers, one script: on Bash, allows a command mentioning `.claude/reviewed` only if it's provably read-only or text-only (an allowlist), blocking write-intent commands; on Write\|Edit, blocks any write to the path outright. Both defer to the caller's `agent_type` (`reviewer`, or the main session only in the no-reviewer fallback). Hit live during this repo's own ADAPT — see [ADR 0002](../../../docs/adr/0002-reviewed-dir-owned-by-reviewer.md). |
 | `reviewer-route-gate.sh` | PreToolUse (Agent) | Mechanically enforces "lead-programmer never spawns/messages reviewer directly"; also blocks dispatching the next gated unit while an earlier one awaits review. |
 | `session-start.sh` | SessionStart | Records session-start HEAD sha for `stop-gate.sh`; drift-checks `persona-config.json`'s stamped `pluginVersion` vs. the installed plugin version; re-injects `protocol-digest.md` as additionalContext on resume/compact only. |
-| `stop-gate.sh` | Stop + SubagentStop | Core "done = reviewer PASS" enforcement — checks commits/PASS markers before allowing a gated agent (`persona-config.json`'s `gatedAgents`, default `["lead-programmer"]`) to stop. Invokes `marker-commit-check.sh` during the review-join loop. |
+| `stop-gate.sh` | Stop + SubagentStop | Pending-review flag check: a gated agent's stop (`persona-config.json`'s `gatedAgents`, default `["lead-programmer"]`) writes a flag, and is blocked when a verdict marker is newer than the writer-dispatch stamp; a reviewer stop clears every flag; the main Stop blocks while a flag stands without `skip:` or `defer:`. |
 | `task-gate.sh` | TaskCompleted | Agent-teams-mode equivalent of stop-gate: requires a reviewer PASS marker before completing any `impl:*` task; planning/research/doc tasks pass through ungated. |
 
 ## Wiki changelog — Semantic change in marker `commit:` field (milestone 2026-08-15)
@@ -148,6 +148,8 @@ The classification is measured and conservative — a proven mismatch requires b
 
 ## Config: `markerCommitCheck.mode`
 
+Retired (0.32.0): no hook reads this key since unit lp-stopgate; `marker-commit-check.sh` stays callable by hand.
+
 Located in `.claude/persona-config.json`, controls G3's behaviour at reviewer turn-end:
 
 - `off`: No advisory check; no audit line written.
@@ -249,6 +251,8 @@ H3 and H4 only inspect dispatches to *gated* targets (`persona-config.json`'s `g
   line burns the sentinel and the checks still run.
 
 ## stop-gate.sh: marker coupling via review-join stamp (issue #153, resolved by #226)
+
+Retired (0.32.0): review-join stamps are gone and a reviewer stop clears every flag whatever the verdict (unit lp-stopgate). The section below is history.
 
 The reviewer's flag-clear path (in `stop-gate.sh`'s `SubagentStop` grant
 branch) couples the removal of pending-review flags to a verdict-marker check,
