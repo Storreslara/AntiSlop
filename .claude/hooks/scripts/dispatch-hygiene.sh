@@ -2,7 +2,7 @@
 # PreToolUse (Agent). Token-hygiene gate on dispatch prompts: refuses a spawn
 # whose prompt inlines an artifact that already exists on disk, that
 # re-dispatches a unit the reviewer has already PASSed, or that sends a gated
-# target something other than the nine-element dispatch contract. Config lives
+# target something other than the five-field dispatch contract. Config lives
 # in persona-config.json's `dispatchHygiene` (mode block|warn|off,
 # maxPromptBytes, maxInlineBlockLines, requireContract); every key is optional
 # and defaults to block/30000/80/true.
@@ -72,15 +72,12 @@
 # can decline to fire when a marker's `commit:` SHA is positively proven
 # unreachable from HEAD, never the reverse - anything it cannot verify (no
 # field, a malformed token, no git repo) still fires. H3 does not parse a
-# `Mode: advisory` second line (see reviewer-route-gate-core.sh and
-# agents/orchestrator.md's "Review routing" section): a legitimate advisory
-# reviewer dispatch onto an already-PASSed unit still trips H3 exactly like
-# any other re-dispatch, since H3's re-dispatch check runs independently of
-# the route-gate's stamp suppression. This is a documented interaction, not
-# a defect - H3's own matching/blocking logic is unchanged by `Mode: advisory`.
+# `Mode: advisory` line, and no hook or script reads that convention since
+# lp-joinstamp removed the route gate's parsing, so an advisory reviewer
+# dispatch onto a PASSed unit trips H3 like any re-dispatch.
 #
 # H4 checks LABELS, plus a MINIMAL SUBSTANCE FLOOR (Step 7a). It forces a
-# well-LABELLED dispatch whose eight `## ` headings each carry at least one
+# well-LABELLED dispatch whose five fields (the `Unit:` line and four `## ` headings) each carry at least one
 # non-blank line that is not itself a heading (a nested `### `-only body does
 # NOT count), but never a well-FORMED one: a single filler line under a
 # heading still satisfies it. Heading presence is matched as a plain

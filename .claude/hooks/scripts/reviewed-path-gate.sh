@@ -86,9 +86,8 @@ if [ -z "$agent_type" ] || persona_matches_gate "$agent_type" orchestrator; then
     fi
   done <<< "$personas"
   if [ -z "$has_reviewer" ]; then
-    # Only the reviewer writes .escalated, so a standing one under a
-    # reviewer-less config proves the reviewer was deselected AFTER the
-    # escalation was raised - exactly the laundering transition this closes.
+    # .escalated is retired (0.32.0) and nothing writes it, so this branch
+    # catches only a marker left from an older version.
     shopt -s nullglob
     escalated_markers=( "${project_dir}"/.claude/reviewed/*.escalated )
     shopt -u nullglob
