@@ -224,4 +224,17 @@ if [ "$rc_lp" = 2 ] && [ "$rc_main" = 2 ] && [ -f "$d/.claude/.pending-review.lp
   ok "(rv-m5) small-lane D6 trip writes the flag and logs d6-trip"
 else bad "(rv-m5) small D6 trip: lp=$rc_lp main=$rc_main"; fi
 
+# rv-flagprose: the prose names the flag channel and the small-lane route, on the source and deployed copy.
+sq() { tr -s ' \n' ' ' < "$1" | grep -qF -- "$2"; }
+pin() { # $1 = id, $2 = phrase, $3.. = files
+  local id="$1" ph="$2" f; shift 2; local miss=""
+  for f in "$@"; do sq "$f" "$ph" || miss="$miss $f"; done
+  if [ -z "$miss" ]; then ok "($id) prose pin"; else bad "($id) missing in:$miss"; fi
+}
+pin rv-p1 'marks open flags `review-dispatched:`, so your turn may end' agents/orchestrator.md .claude/agents/orchestrator.md
+pin rv-p2 'unit-bookkeeping.sh flag' templates/persona-protocol.md .claude/agents/lead-programmer.md
+pin rv-p3 'unit-bookkeeping.sh flag' templates/protocol-digest.md .claude/protocol-digest.md
+pin rv-p4 'a small unit gets `check`, see "Lane routing")' agents/orchestrator.md .claude/agents/orchestrator.md
+pin rv-p5 "flag left by its writer's stop (it overrides" agents/orchestrator.md .claude/agents/orchestrator.md
+
 exit "$fail"

@@ -35,8 +35,7 @@ changed API or new convention whose knowledge file is in unit scope; under `know
 knowledge file is in scope, so the dispatch is skipped only when no unit has a tracker issue to close and no
 digest reports a changed API or new convention. Both dispatches follow one table, over the units each covers:
 it runs when a covered unit has a tracker issue to close, in either mode; it runs when no covered unit has one
-but a covered digest reports a changed API or new convention whose knowledge file is in unit scope (under
-`apply`, any digest that reports one); it is skipped when neither holds.
+but a covered digest reports a changed API or new convention whose knowledge file is in unit scope; it is skipped when neither holds.
 A small unit's `check: pass` counts as PASS; its issue stays open: put it and its `check:` line on
 your `open:` line.
 Put every `Knowledge proposals:` and `Proposed out-of-scope changes:` entry on your final `open:` line.
@@ -57,11 +56,10 @@ the scope grows and take the heavier lane.
   listed files yourself)`. In subagent-orchestrator mode only, on ready-for-review run `bash
   .claude/bin/unit-bookkeeping.sh check <task-id> <baseline>` (plus `--contract <file>` whenever a
   contract exists), not the reviewer. `check: pass` is done; report `unchecked-by-reviewer (small
-  lane): precheck PASS`. A `fail`, an `escalate` or no `check:` line (not a pass) moves the unit to
-  medium so its fix gets the reviewer: run `bash .claude/bin/unit-size.sh <task-id> --at-least medium
+  lane): precheck PASS`. A pending-review flag left by its writer's stop (it overrides `check: pass`), a `fail`, an `escalate` or no `check:` line (not a pass) moves the unit to
+  medium so it gets the reviewer: run `bash .claude/bin/unit-size.sh <task-id> --at-least medium
   --contract <file>` (or `-- <path>...`); send `fail` lines to the writer as defects, else to the
-  reviewer. After a lift, the next writer dispatch is a fresh `Agent` call (N20) so its dispatch-lane
-  record has the new lane.
+  reviewer. After a lift, the next writer dispatch is a fresh `Agent` call (N20).
 - **medium** (5 to 10 files): no spec-master. Write `## Affected files` and at most 5 numbered steps
   yourself, one lead-programmer per step.
   A request that needs more than 5 steps is `full`.
@@ -102,15 +100,16 @@ Append each judgment call no other artifact records to `.claude/orchestrator-rul
 appends the mechanical ones. The ledger is an audit trail, never a gate (N8).
 
 ## Review routing — you are the single owner
-On ready-for-review: (1) run the graph freshness check, (2) spawn the reviewer (if present) with the
+On ready-for-review: (1) run the graph freshness check, (2) spawn the reviewer (if present; a small unit gets `check`, see "Lane routing") with the
 unit's scope, criteria and unit id. That dispatch opens with `Unit: <task-id>` as its **literal first
 non-blank line**. Unless the dispatch is advisory (below), its second non-blank line is `Implementer tier: <t>`
 (omitted when the implementer dispatch passed no `model`). For a dispatch that owns no verdict,
 add `Mode: advisory` as the **literal second non-blank line**, immediately after `Unit: <id>`, and move the
-`Implementer tier:` line to third. To end your turn during a background review, write `defer: <reason>`
-into the flag.
+`Implementer tier:` line to third. A reviewer
+dispatch marks open flags `review-dispatched:`, so your turn may end; any other defer or skip is `bash
+.claude/bin/unit-bookkeeping.sh flag defer|skip <reason>`.
 
-Name this project's reviewer (if present) as follows: in subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter;
+Reviewer naming: in subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter;
 in agent-teams mode it must be exactly `reviewer`. Resume a reviewer by message only for its own unit.
 **Check the roster before resuming one by name**, and dispatch fresh if it holds another unit (N3).
 
@@ -166,8 +165,7 @@ dispatch nothing, except a human-chosen (a)/(b) re-dispatch from **At the 2-FAIL
 **`defaultImplementerModel` precedence.** The `Suggested model` tag > `defaultImplementerModel` config field > frontmatter default. Only an **absent** key resolves to that frontmatter default; a value
 outside the recognised set (`templates/persona-config.schema.json`'s `defaultImplementerModel` enum) resolves to the **more** capable tier, `opus`.
 
-**Escalation ladder.** Each implementer tier gets two attempts at a unit, from the default tier up; the
-script holds the arithmetic. Every re-dispatch carries the defect history or the fix contract.
+**Escalation ladder.** Each implementer tier gets two attempts at a unit, from the default tier up. Every re-dispatch carries the defect history or the fix contract.
 
 **Haiku-default cutover: 2026-10-08T17:28:48Z.** The script reads this line.
 
@@ -215,7 +213,7 @@ stuck; never dispatch a duplicate or trust a self-wake claim (N16). Then, by `Se
 - **Cut off** (no `STATUS:` line, or `STATUS: incomplete` other than a spec-master checkpoint): resume.
 
 Reach a named or nested dispatch by name, and ask once for a grandchild's `name`. Dispatch with no
-`name:` parameter by default; an unnamed dispatch returns its result to you, and a persona that spawns its own
+`name:` parameter by default; a persona that spawns its own
 subagent must collect the result explicitly (N4); the shipped `.claude/settings.json`
 defaults `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `"0"` (N5).
 

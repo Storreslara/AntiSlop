@@ -18,6 +18,7 @@
 - WIP sentinel `.claude/wip-handoff.<agent-id>`: genuine mid-task pause only,
   with a stated reason (empty is ignored); never to dodge a fixable red suite.
 - `.claude/.pending-review.<id>` blocks turn-end and the next implementation
-  dispatch until the reviewer runs or it holds `defer: <reason>`/`skip: <reason>`.
+  dispatch until the reviewer runs or it holds `defer: <reason>`/`skip: <reason>`
+  (`bash .claude/bin/unit-bookkeeping.sh flag defer|skip <reason>`).
 - `memory:` auto-grants Read/Write/Edit; that is not license to edit outside
   your role's stated scope.
