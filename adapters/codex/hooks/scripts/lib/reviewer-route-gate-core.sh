@@ -81,6 +81,30 @@ if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then
       exit 2
     fi
   fi
+
+  # The allowed reviewer dispatch marks each plain flag `review-dispatched: <ts>` (old content kept
+  # below), so the main Stop passes while it runs. Only a target whose SubagentStop clears the flags
+  # (persona_matches_grant, as in stop-gate-core.sh) marks them; a failed rewrite leaves the flag
+  # plain, so that Stop still blocks. The tmp name sits outside the .pending-review.* glob.
+  if persona_matches_grant "$target_type" reviewer \
+     && ! [ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ]; then
+    ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    marked=0
+    for flag in "${dot}"/.pending-review.*; do
+      [ -f "$flag" ] || continue
+      case "$(head -n 1 "$flag" 2>/dev/null || true)" in
+        "defer: "*|"skip: "*|"review-dispatched: "*) continue ;;
+      esac
+      tmp="$(mktemp "${dot}/.review-dispatched-tmp.XXXXXX" 2>/dev/null)" || continue
+      if { printf 'review-dispatched: %s\n' "$ts" && cat "$flag"; } > "$tmp" 2>/dev/null \
+         && mv -f "$tmp" "$flag" 2>/dev/null; then
+        marked=$((marked + 1))
+      else
+        rm -f "$tmp" 2>/dev/null || true
+      fi
+    done
+    [ "$marked" -eq 0 ] || audit_append "$review_audit" "${ts} review-dispatched flags=${marked}"
+  fi
 fi
 
 exit 0
