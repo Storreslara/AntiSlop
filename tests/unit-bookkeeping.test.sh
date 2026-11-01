@@ -120,4 +120,53 @@ printf '#!/usr/bin/env bash\necho "ladder-tier: sonnet n=0 ladder=haiku,sonnet,o
 UB_LADDER="$T/stub/laddernc" bash "$UB" dispatch u16 >/dev/null
 tail -n1 "$LOG" | grep -qE "^RULING $TS unit=u16 decision=helper failed rc=5: opus\$" && ok "(r) no-contract ruling skipped for a failed helper" || bad "(r) no-contract: $(tail -n1 "$LOG")"
 
+# rv-tools: check (rules C1-C8) with the precheck stubbed through UB_PRECHECK, and flag.
+cat > "$T/stub/pre" << 'STUB'
+#!/usr/bin/env bash
+S="$(dirname "$0")"
+while [ "$#" -gt 0 ]; do [ "$1" = --criterion ] && { cat "$S/crit.$2"; exit 0; }; shift; done
+cat "$S/packet"; exit "$(cat "$S/rc" 2>/dev/null || echo 0)"
+STUB
+PASSP='precheck: result=pass unit=uc range=a..b fails=0 deferred=0 judge=0'
+mkdir -p "$HDR" "$T/repo/.claude/reviewed"
+setup() { # <lane> <first packet line> [more packet lines]
+  printf 'lane: %s files=1 reason=paths\n' "$1" > "$HDR/uc.lane"
+  shift; printf '%s\n' "$@" > "$T/stub/packet"; echo 0 > "$T/stub/rc"
+  rm -f "$T/repo/.claude/reviewed/uc.fail" "$T/repo/.claude/persona-config.json"
+}
+ck() { UB_PRECHECK="$T/stub/pre" bash "$UB" check uc "$BASE" "$@" | head -n1; }
+is_ck() { # <label> <want-first-line> [check args]
+  local label="$1" want="$2" got; shift 2; got="$(ck "$@")"
+  [ "$got" = "$want" ] && ok "$label $want" || bad "$label: want '$want', got '$got'"
+}
+setup medium "$PASSP"; is_ck "(rv-c1)" 'check: escalate unit=uc reason=not-small'
+setup small "$PASSP"; echo "FAIL uc" > "$T/repo/.claude/reviewed/uc.fail"; is_ck "(rv-c2)" 'check: escalate unit=uc reason=fail-record'
+setup small "$PASSP"; echo 1 > "$T/stub/rc"; is_ck "(rv-c3)" 'check: escalate unit=uc reason=precheck-error'
+setup small 'garbage'; is_ck "(rv-c3) bad first line" 'check: escalate unit=uc reason=precheck-error'
+setup small 'precheck: result=fail unit=uc range=a..b fails=1 deferred=0 judge=0' 'scope: fail x'
+is_ck "(rv-c4)" 'check: fail unit=uc reason=precheck' --contract c.md
+UB_PRECHECK="$T/stub/pre" bash "$UB" check uc "$BASE" --contract c.md | grep -qx 'scope: fail x' && ok "(rv-c4) packet printed" || bad "(rv-c4) packet missing"
+setup small 'precheck: result=pass unit=uc range=a..b fails=0 deferred=0 judge=2'; is_ck "(rv-c5)" 'check: escalate unit=uc reason=judge' --contract c.md
+setup small 'precheck: result=pass unit=uc range=a..b fails=0 deferred=1 judge=0' 'criterion 3: deferred long'
+echo 'criterion 3: fail exit=124 timeout' > "$T/stub/crit.3"; is_ck "(rv-c6)" 'check: escalate unit=uc reason=timeout' --contract c.md
+echo 'criterion 3: fail exit=1 want=0' > "$T/stub/crit.3"; is_ck "(rv-c6) other failure" 'check: fail unit=uc reason=criterion-3' --contract c.md
+echo 'criterion 3: pass exit=0' > "$T/stub/crit.3"; is_ck "(rv-c6) deferred pass" 'check: pass unit=uc reason=precheck' --contract c.md
+setup small "$PASSP"; is_ck "(rv-c7) no command" 'check: escalate unit=uc reason=no-criteria'
+echo '{"testAndLintCommand":"exit 3"}' > "$T/repo/.claude/persona-config.json"; is_ck "(rv-c7) failing command" 'check: fail unit=uc reason=test-command'
+echo '{"testAndLintCommand":"exit 124"}' > "$T/repo/.claude/persona-config.json"; is_ck "(rv-c7) timeout" 'check: escalate unit=uc reason=timeout'
+echo '{"testAndLintCommand":"exit 3"}' > "$T/repo/.claude/persona-config.json"; is_ck "(rv-c7) contract skips the command" 'check: pass unit=uc reason=precheck' --contract c.md
+echo '{"testAndLintCommand":"true"}' > "$T/repo/.claude/persona-config.json"; is_ck "(rv-c8)" 'check: pass unit=uc reason=precheck'
+tail -n1 "$LOG" | grep -qE "^RULING $TS unit=uc decision=small-lane check: pass precheck\$" && ok "(rv-c8) ruling appended" || bad "(rv-c8) ruling: $(tail -n1 "$LOG")"
+bash "$UB" check uc 'not-a-ref' >/dev/null 2>&1; [ "$?" = 2 ] && ok "(rv-c8) bad baseline exits 2" || bad "(rv-c8) bad baseline"
+
+P1="$T/repo/.claude/.pending-review.a1"; P2="$T/repo/.claude/.pending-review.a2"
+printf 'pending a1\n' > "$P1"; printf 'pending a2\n' > "$P2"
+o="$(bash "$UB" flag defer 'waiting on reviewer')"; rc=$?
+[ "$rc" = 0 ] && [ "$o" = 'flag: defer flags=2' ] && [ "$(sed -n 1p "$P1")" = 'defer: waiting on reviewer' ] && [ "$(sed -n 2p "$P1")" = 'pending a1' ] && [ "$(sed -n 1p "$P2")" = 'defer: waiting on reviewer' ] && ok "(rv-f1) defer rewrites the first line and keeps the content" || bad "(rv-f1) rc=$rc out=$o p1=$(cat "$P1")"
+bash "$UB" flag skip '   ' >/dev/null 2>&1; r1=$?
+bash "$UB" flag bogus x >/dev/null 2>&1; r2=$?
+rm -f "$P1" "$P2"
+bash "$UB" flag skip 'gone' >/dev/null 2>&1; r3=$?
+[ "$r1" = 2 ] && [ "$r2" = 2 ] && [ "$r3" = 1 ] && ! ls "$T/repo/.claude"/.pending-review.* >/dev/null 2>&1 && ok "(rv-f2) blank reason exits 2, missing flag exits 1 and none is created" || bad "(rv-f2) r1=$r1 r2=$r2 r3=$r3"
+
 exit "$fail"
