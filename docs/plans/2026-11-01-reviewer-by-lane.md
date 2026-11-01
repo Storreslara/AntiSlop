@@ -31,11 +31,11 @@ After this plan:
   <medium|full> (--contract <path> | -- <path>...)` prints and records the heavier of the two lanes, with
   `reason=at-least` when it lifted the lane. The exemption applies in subagent-orchestrator mode only (D7).
 - **D2 What replaces the reviewer on a small unit.** `bash .claude/bin/unit-bookkeeping.sh check <unit>
-  <baseline> [--contract <path>]` runs the rules C1-C8 (unit rv-tools) and prints
+  <baseline> [--contract <path>]` runs the rules C1-C8 (rv-tools; rv-harden adds four) and prints
   `check: <pass|fail|escalate> unit=<u> reason=<word>`. `pass` means done. `fail` sends the printed
   failure lines to the writer as defects. `escalate` means a check that cannot be decided mechanically.
   After a `fail` or an `escalate`, the unit leaves the small lane: the orchestrator runs `unit-size.sh
-  --at-least medium` before the next dispatch, so the fix gets the pending-review flag, the reviewer and the
+  <unit> --at-least medium --contract <path>` (or `-- <path>...` with no contract) before the next dispatch, so the fix gets the pending-review flag, the reviewer and the
   normal FAIL ladder. An `escalate` with no further writer work goes straight to the reviewer. The check
   writes no marker (only the reviewer writes markers); it appends one RULING line to the ledger. Resolved:
   Open Question 1.
@@ -74,7 +74,8 @@ After this plan:
 - **D8 Tracker issues of small units.** The scribe closes an issue only on a quoted reviewer PASS line. A
   small-lane unit's issue therefore stays open; the orchestrator puts it on its `open:` line together with
   the check line. Resolved: Open Question 3.
-- **D9 Order and release.** The tooling comes first, then the lane record, then the gate, then the prose
+- **D9 Order and release.** The tooling comes first, then its hardening (rv-harden; the user chose
+  "Harden first" on 2026-11-01, after the rv-tools PASS notes), then the lane record, then the gate, then the prose
   (lane). The recommendation 3 work follows: gate, then route gate, then prose. The scribe unit comes next
   and the 0.33.0 release is last. Content units add an `[Unreleased]` CHANGELOG bullet and bump no version
   (constitution P3). The system works after every unit: until rv-prose lands, the orchestrator still sends
@@ -96,6 +97,7 @@ has a targeted criterion with its own mutation.
 | # | id | files | lane | tier hint | contract |
 |---|---|---|---|---|---|
 | 1 | rv-tools | 5 | medium | sonnet | [rv-tools](2026-11-01-reviewer-by-lane/contracts/rv-tools.md) |
+| 1b | rv-harden | 5 | medium | sonnet | [rv-harden](2026-11-01-reviewer-by-lane/contracts/rv-harden.md) |
 | 2 | rv-lanerec | 3 | full (hooks/) | sonnet | [rv-lanerec](2026-11-01-reviewer-by-lane/contracts/rv-lanerec.md) |
 | 3 | rv-stopgate | 4 + 2 regenerated | full | opus | [rv-stopgate](2026-11-01-reviewer-by-lane/contracts/rv-stopgate.md) |
 | 4 | rv-prose | 5 | full (agents/) | opus | [rv-prose](2026-11-01-reviewer-by-lane/contracts/rv-prose.md) |
@@ -141,6 +143,38 @@ Files: `bin/unit-size.sh`, `bin/unit-bookkeeping.sh`, `tests/unit-size.test.sh`,
   keeps the content, and `(rv-f2)` checks that an empty reason exits 2 and that a missing flag exits 1 with
   no flag created.
 
+### 1b. rv-harden: close the rv-tools PASS notes
+
+Files: as rv-tools. Source: the notes in `.claude/reviewed/rv-tools.pass`. It is numbered 1b so that the
+later units and their contracts keep their numbers. It must pass before rv-stopgate, the first unit that
+lets a small unit skip the reviewer. Rule order of `check` afterwards: C1, C2, C2a, C2b, C3, C4, C4a, C5,
+C6, C7, C8.
+- C2a. `git diff --quiet HEAD` exits non-zero: fail, `uncommitted`. The criteria and the test command run
+  on the working tree, so a dirty tree could pass a broken commit.
+- C2b. The baseline resolves to HEAD: escalate, `empty-range`. Not `fail`: a clean empty range is either a
+  wrong baseline or a "no change warranted" outcome, and neither is a defect the writer can fix; the
+  reviewer judges it.
+- C4a. The packet has any `sensitive: ` line: escalate, `sensitive`.
+- C5 also escalates `precheck-error` when the `judge=` value is not a number (absent field included).
+- C6's inner precheck call reads `</dev/null`.
+- C7. With `--contract`: no packet line matches `^criterion [0-9]+:`: escalate, `no-criteria`. Without:
+  the command runs from `git rev-parse --show-toplevel`, as the precheck's criteria do.
+- `flag` skips a symlink (`[ -L "$f" ]`) and writes with `dd of="$f" conv=notrunc,nocreat status=none`,
+  so a flag deleted mid-write is not re-created. Only a successful write counts toward `flags=<n>`.
+- `unit-size.sh`: any argument after `--contract <path>` exits 2 and writes no file (the smaller edit than
+  parsing `--at-least` anywhere; the `--` form already reads a `-`-prefixed argument as `full`).
+- Tests. `unit-size.test.sh`: `(rv-a4)` `u --contract c.md --at-least medium` exits 2, no file. In
+  `unit-bookkeeping.test.sh`, stubbed: `(rv-h1)` contract, no criterion line; `(rv-h2)` sensitive line;
+  `(rv-h3)` dirty tracked file; `(rv-h4)` baseline HEAD; `(rv-h5)` `judge=x`; `(rv-h6)` a stub that reads
+  stdin on `--criterion`, two deferred criteria, the second failing, gives `fail criterion-<second>`;
+  `(rv-h7)` started from a subdirectory, a command that tests a top-level file passes; `(rv-h8)` a
+  symlinked flag's target is unchanged and not counted; `(rv-h9)` a `dd` shim on PATH that deletes the
+  flag first leaves no flag, `flags=0`, exit 1. With the real `bin/review-precheck.sh` (no `UB_PRECHECK`)
+  in a scratch repo whose contract is committed at the baseline: `(rv-e1)` one passing criterion gives
+  `check: pass`; `(rv-e2)` no criteria gives `no-criteria`; `(rv-e3)` a listed `hooks/` file gives
+  `sensitive`. A stub case under `--contract` carries `criterion 1: pass exit=0` unless it tests
+  no-criteria, so no mutation is masked by C7; the old `(rv-c7) contract skips the command` case gains it.
+
 ### 2. rv-lanerec: dispatch-time lane snapshot
 
 Files: `hooks/scripts/dispatch-hygiene.sh`, `tests/dispatch-hygiene.test.sh`, `CHANGELOG.md`.
@@ -168,7 +202,8 @@ Files: `agents/orchestrator.md`, `templates/persona-protocol.md`, `docs/orchestr
   `bash .claude/bin/unit-bookkeeping.sh check <task-id> <baseline>` (adding `--contract` when one exists)
   instead of the reviewer, with the outcomes from D2, and report
   `unchecked-by-reviewer (small lane): precheck PASS`. Heavier moves use
-  `unit-size.sh <task-id> --at-least medium`. The line "Every unit in every lane gets its reviewer." becomes
+  `unit-size.sh <task-id> --at-least medium --contract <file>` (a bare `--at-least medium` with no
+  `--contract` or `--` prints `full ... reason=no-input` and empties `<unit>.scope`). The line "Every unit in every lane gets its reviewer." becomes
   "Medium and full units always get their reviewer (if present); in agent-teams mode every unit does." The
   scribe convention counts `check: pass` as done for a small unit and keeps its issue open (D8).
 - The protocol's "Review ownership" section states the small-lane unit exception. Its "Pending-review flag"
@@ -240,6 +275,10 @@ below `## [Unreleased]`. Dispatch it after rv-scribe has passed.
   the writer cannot move its own lane, because the snapshot was taken before the writer existed and the
   first record wins. Since ADR-0044 a Bash write into `.claude/reviewed/` is not blocked, so a writer could
   append a forged record, but only after its genuine one. The join takes the first record.
+- **The 600000 ms Bash ceiling.** The precheck runs each criterion with `timeout 590`, C6 re-runs each
+  deferred one, and C7 adds up to 590 s, so one `check` call on a unit with long criteria can outlast a
+  single Bash call. A call cut off there prints no `check:` line. That is not `pass`, so the unit is not
+  done (D2: only `pass` is done); it fails toward the reviewer, never toward a skipped review.
 - **Byte budget.** The orchestrator source has 646 bytes of headroom. rv-prose and rv-flagprose may
   have to move text into `docs/orchestrator-rationale.md`.
 
@@ -252,8 +291,10 @@ None open. The user answered all three on 2026-11-01, each matching the recommen
 
 ## Dispatch
 
-All nine contracts are written and committed; each Units-table link goes to its contract file. Dispatch in
-table order, one unit at a time, from the contract file only.
+All ten contracts are written and committed; each Units-table link goes to its contract file. Dispatch in
+table order, one unit at a time, from the contract file only: rv-tools (PASS), rv-harden, rv-lanerec,
+rv-stopgate, rv-prose, rv-mainstop, rv-routemark, rv-flagprose, rv-scribe, rv-release. rv-harden was added
+on 2026-11-01 because the user chose "Harden first" over carrying the rv-tools notes into later units.
 
 ## Scribe update hint
 

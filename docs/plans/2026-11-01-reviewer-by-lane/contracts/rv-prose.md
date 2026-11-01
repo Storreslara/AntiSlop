@@ -1,10 +1,10 @@
 Unit: rv-prose
 
 ## Objective
-Plan unit 4 (D2, D7, D8). Orchestrator small bullet: on ready-for-review run `bash .claude/bin/unit-bookkeeping.sh check <task-id> <baseline>` (plus `--contract`) instead of the reviewer, report `unchecked-by-reviewer (small lane): precheck PASS`, and after `fail`/`escalate` run `unit-size.sh <task-id> --at-least medium`. "Every unit in every lane gets its reviewer." becomes "Medium and full units always get their reviewer (if present); in agent-teams mode every unit does." Protocol: small-lane exception in "Review ownership"; no flag for a small `dispatch-lane.log` record in "Pending-review flag". Rationale entry: 43 of 43 PASS, $46.6, 37%. For the scribe, `check: pass` is done and the issue stays on the `open:` line. Pins `(rv-o1)`-`(rv-o5)` ((k) block, both copies): check command, report string, new sentence (old gone), `--at-least medium`, `open:`. One `[Unreleased]` CHANGELOG bullet, no version bump.
+Plan unit 4 (D2, D7, D8). Orchestrator small bullet: on ready-for-review run `bash .claude/bin/unit-bookkeeping.sh check <task-id> <baseline>` (plus `--contract`) instead of the reviewer, report `unchecked-by-reviewer (small lane): precheck PASS`, and after `fail`/`escalate` run `unit-size.sh <task-id> --at-least medium --contract <file>`. "Every unit in every lane gets its reviewer." becomes "Medium and full units always get their reviewer (if present); in agent-teams mode every unit does." Protocol: small-lane exception in "Review ownership"; no flag for a small `dispatch-lane.log` record in "Pending-review flag". Rationale entry: 43 of 43 PASS, $46.6, 37%. For the scribe, `check: pass` is done and the issue stays on the `open:` line. Pins `(rv-o1)`-`(rv-o5)` ((k) block, both copies): check command, report string, new sentence (old gone), `--at-least medium --contract <file>`, `open:`. One `[Unreleased]` bullet, no bump.
 
 ## Retrieval
-No tracker issue. Spec: `docs/plans/2026-11-01-reviewer-by-lane.md`, unit 4. Contract of record. Depends on rv-tools and rv-stopgate.
+No tracker issue. Spec: `docs/plans/2026-11-01-reviewer-by-lane.md`, unit 4. Depends on rv-tools, rv-harden and rv-stopgate.
 
 ## Affected files
 - `agents/orchestrator.md`
