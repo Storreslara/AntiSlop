@@ -103,44 +103,86 @@ finish() {
   exit 0
 }
 
+# C1-C2c: lane, fail record, clean tree, baseline is an ancestor, range changes something.
+check_tree() {
+  local st rc
+  [ "$(sed -n '1s/^lane: \([a-z]*\) .*/\1/p' "$bk/$CK_UNIT.lane" 2>/dev/null)" = small ] || finish escalate not-small
+  [ ! -e "$state/reviewed/$CK_UNIT.fail" ] || finish escalate fail-record
+  st="$(git -C "$(git rev-parse --show-toplevel)" status --porcelain --untracked-files=all -- . ':(exclude).claude/agent-memory' 2>/dev/null)"; rc=$?
+  [ "$rc" -eq 0 ] && [ -z "$st" ] || finish fail uncommitted
+  git merge-base --is-ancestor "$CK_BASE" HEAD 2>/dev/null || finish escalate bad-baseline
+  git diff --quiet "$CK_BASE" HEAD 2>/dev/null; [ "$?" -eq 1 ] || finish escalate empty-range
+}
+
+# C3-C5: the precheck's first line, then sensitive paths, size and judge counts. Sets CK_PACKET, CK_DEF.
+check_packet() {
+  local pc="$1" rc first re n res fails jd; shift
+  CK_PACKET="$(bash "$pc" "$CK_UNIT" "$CK_BASE" "$@" 2>/dev/null)"; rc=$?
+  first="$(printf '%s\n' "$CK_PACKET" | head -n1)"
+  re="^precheck: result=(pass|fail) unit=${CK_UNIT//./\\.} range=[^ ]+ fails=([0-9]+) deferred=([0-9]+) judge=([0-9]+)\$"
+  [ "$rc" -eq 0 ] && [[ "$first" =~ $re ]] || finish escalate precheck-error
+  res="${BASH_REMATCH[1]}"; fails="${BASH_REMATCH[2]}"; CK_DEF="${BASH_REMATCH[3]}"; jd="${BASH_REMATCH[4]}"
+  [ "$res" = pass ] || finish fail precheck
+  [ "$fails" = 0 ] || finish escalate precheck-error
+  n="$(printf '%s\n' "$CK_PACKET" | grep -c '^sensitive: ')"
+  [[ "$n" =~ ^[0-9]+$ ]] || finish escalate precheck-error
+  [ "$n" = 0 ] || finish escalate sensitive
+  n="$(printf '%s\n' "$CK_PACKET" | grep -cE '^size: files=[0-9]+ ')"
+  [ "$n" = 1 ] || finish escalate precheck-error
+  n="$(printf '%s\n' "$CK_PACKET" | sed -n 's/^size: files=\([0-9]*\) .*/\1/p')"
+  [[ ! "$n" =~ ^0+$ ]] || finish escalate empty-range
+  [ "$jd" = 0 ] || finish escalate judge
+}
+
+# C6: re-run every deferred criterion; the deferred lines must match the packet's count.
+check_deferred() {
+  local pc="$1" n line re cnt; shift
+  cnt="$(printf '%s\n' "$CK_PACKET" | grep -cE '^criterion [0-9]+: deferred long$')"
+  [ "$cnt" = "$CK_DEF" ] || finish escalate precheck-error
+  while read -r n; do
+    line="$(bash "$pc" "$CK_UNIT" "$CK_BASE" "$@" --criterion "$n" 2>/dev/null </dev/null | head -n1)"
+    re="^criterion $n: pass exit=[0-9]+\$"
+    if [[ "$line" =~ $re ]]; then continue; fi
+    case "$line" in "criterion $n: fail exit=124 timeout"*) finish escalate timeout ;; esac
+    finish fail "criterion-$n" "$line"
+  done < <(printf '%s\n' "$CK_PACKET" | sed -n 's/^criterion \([0-9]*\): deferred long$/\1/p')
+}
+
+# C7 with a contract: the packet's criteria are exactly the numbers the contract declares.
+check_declared() {
+  local contract="$1" bad got decl
+  bad="$(printf '%s\n' "$CK_PACKET" | grep '^criterion ' | grep -vE '^criterion [0-9]+: (pass exit=[0-9]+|deferred long)$')"
+  [ -z "$bad" ] || finish escalate precheck-error
+  got="$(printf '%s\n' "$CK_PACKET" | sed -n 's/^criterion \([0-9][0-9]*\):.*/\1/p' | sort -n)"
+  [ -n "$got" ] || finish escalate no-criteria
+  [ -r "$contract" ] || finish escalate criteria-mismatch
+  decl="$(sed -n '/^## Acceptance criteria/,/^## /{s/^\([0-9][0-9]*\)\. .*/\1/p;}' "$contract" | sort -n)"
+  [ -n "$decl" ] && [ "$decl" = "$got" ] || finish escalate criteria-mismatch
+}
+
+# C7 without a contract: the project's test command passes from the repo top.
+check_command() {
+  local cmd out rc
+  cmd="$(jq -r '.testAndLintCommand // empty' "$state/persona-config.json" 2>/dev/null)"
+  [ -n "$cmd" ] || finish escalate no-criteria
+  out="$(cd "$(git rev-parse --show-toplevel)" && timeout 590 bash -c "$cmd" 2>&1)"; rc=$?
+  [ "$rc" -ne 124 ] || finish escalate timeout
+  [ "$rc" -eq 0 ] || finish fail test-command "$(printf '%s\n' "$out" | tail -n 20)"
+}
+
 check_cmd() {
-  local unit="$2" base="$3" contract="" pc="${UB_PRECHECK:-$dir/review-precheck.sh}" rc first n line cmd out
+  local unit="$2" base="$3" contract="" pc="${UB_PRECHECK:-$dir/review-precheck.sh}"
   local -a cargs=()
   case "$#" in 3) ;; 5) if [ "$4" = --contract ]; then contract="$5"; cargs=(--contract "$contract"); else usage; fi ;; *) usage ;; esac
   check_unit "$unit"
   if ! git rev-parse --verify -q "$base^{commit}" >/dev/null; then
     echo "unit-bookkeeping: bad baseline: $base" >&2; exit 2
   fi
-  CK_UNIT="$unit"; CK_PACKET=""
-  [ "$(sed -n '1s/^lane: \([a-z]*\) .*/\1/p' "$bk/$unit.lane" 2>/dev/null)" = small ] || finish escalate not-small
-  [ ! -e "$state/reviewed/$unit.fail" ] || finish escalate fail-record
-  git diff --quiet HEAD 2>/dev/null || finish fail uncommitted
-  [ "$(git rev-parse "$base^{commit}")" != "$(git rev-parse HEAD)" ] || finish escalate empty-range
-  CK_PACKET="$(bash "$pc" "$unit" "$base" ${cargs[@]+"${cargs[@]}"} 2>/dev/null)"; rc=$?
-  first="$(printf '%s\n' "$CK_PACKET" | head -n1)"
-  { [ "$rc" -eq 0 ] && [[ "$first" == "precheck: result="* ]]; } || finish escalate precheck-error
-  case " $first " in *" result=fail "*) finish fail precheck ;; esac
-  printf '%s\n' "$CK_PACKET" | grep -q '^sensitive: ' && finish escalate sensitive
-  n="${first##* judge=}"
-  [[ "$n" =~ ^[0-9]+$ ]] || finish escalate precheck-error
-  [ "$n" -gt 0 ] && finish escalate judge
-  while read -r n; do
-    line="$(bash "$pc" "$unit" "$base" ${cargs[@]+"${cargs[@]}"} --criterion "$n" 2>/dev/null </dev/null | head -n1)"
-    case "$line" in
-      "criterion $n: pass"*) ;;
-      "criterion $n: fail exit=124 timeout"*) finish escalate timeout ;;
-      *) finish fail "criterion-$n" "$line" ;;
-    esac
-  done < <(printf '%s\n' "$CK_PACKET" | sed -n 's/^criterion \([0-9]*\): deferred long.*/\1/p')
-  if [ -n "$contract" ]; then
-    printf '%s\n' "$CK_PACKET" | grep -qE '^criterion [0-9]+:' || finish escalate no-criteria
-  else
-    cmd="$(jq -r '.testAndLintCommand // empty' "$state/persona-config.json" 2>/dev/null)"
-    [ -n "$cmd" ] || finish escalate no-criteria
-    out="$(cd "$(git rev-parse --show-toplevel)" && timeout 590 bash -c "$cmd" 2>&1)"; rc=$?
-    [ "$rc" -ne 124 ] || finish escalate timeout
-    [ "$rc" -eq 0 ] || finish fail test-command "$(printf '%s\n' "$out" | tail -n 20)"
-  fi
+  CK_UNIT="$unit"; CK_PACKET=""; CK_BASE="$(git rev-parse "$base^{commit}")"
+  check_tree
+  check_packet "$pc" ${cargs[@]+"${cargs[@]}"}
+  check_deferred "$pc" ${cargs[@]+"${cargs[@]}"}
+  if [ -n "$contract" ]; then check_declared "$contract"; else check_command; fi
   finish pass precheck
 }
 
