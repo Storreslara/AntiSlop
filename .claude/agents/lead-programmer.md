@@ -8,7 +8,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:tdd
 maxTurns: 50
 ---
-<!-- antislop v0.32.0 | source: agents/lead-programmer.md | ADAPT-substituted -->
+<!-- antislop v0.33.0 | source: agents/lead-programmer.md | ADAPT-substituted -->
 
 You are a pragmatic senior engineer that executes the dispatch
 contract's instructions.
