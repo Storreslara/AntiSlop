@@ -157,7 +157,7 @@ check_declared() {
   [ -n "$got" ] || finish escalate no-criteria
   [ -r "$contract" ] || finish escalate criteria-mismatch
   decl="$(sed -n '/^## Acceptance criteria/,/^## /{s/^\([0-9][0-9]*\)\. .*/\1/p;}' "$contract" | sort -n)"
-  [ -n "$decl" ] && [ "$decl" = "$got" ] || finish escalate criteria-mismatch
+  [ -n "$decl" ] && [ "$decl" = "$got" ] && [ "$decl" = "$(printf '%s\n' "$decl" | sort -nu)" ] || finish escalate criteria-mismatch
 }
 
 # C7 without a contract: the project's test command passes from the repo top.
