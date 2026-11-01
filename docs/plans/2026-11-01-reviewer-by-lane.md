@@ -53,7 +53,8 @@ After this plan:
   mismatch, any other lane) writes the flag, so the gate fails toward review. The codex and cursor entry
   scripts never set `writer_lane`, so behaviour on those ports is unchanged.
 - **D4 Consistency.** Under `reviewGating.mode: off`, rule 1 still exits before anything else. The D6
-  forged-marker check still runs on every gated writer's stop, small included. `dispatch-hygiene.sh` still
+  forged-marker check still runs on every gated writer's stop, small included; a trip writes the flag (unit 5).
+  `dispatch-hygiene.sh` still
   touches the writer-dispatch stamp at every gated dispatch. The format of `dispatch-baseline.log` does not
   change (`tests/writer-scope-gate.test.sh` matches its lines exactly), which is why the lane goes in a
   separate log.
@@ -82,8 +83,8 @@ After this plan:
   second parser, 2026-11-01), then the lane record, then the gate, then the prose
   (lane). The recommendation 3 work follows: gate, then route gate, then prose. The scribe unit comes next
   and the 0.33.0 release is last. Content units add an `[Unreleased]` CHANGELOG bullet and bump no version
-  (constitution P3). The system works after every unit: until rv-prose lands, the orchestrator still sends
-  every unit to the reviewer, and a reviewer dispatch with no flag is allowed.
+  (constitution P3). The system works after every unit: until rv-prose lands, every unit still goes to the
+  reviewer, and a reviewer dispatch with no flag is allowed.
 - **D10 What is not touched.** `agents/reviewer.md` does not change: the reviewer's routine on medium and
   full units is the same. `writer-scope-gate.sh`, `task-gate.sh`, `protected-paths.sh`,
   `reviewed-path-gate.sh`, `harness-integrity-gate.sh`, `eval/` and `tests/abtest-arms.test.sh` are not
@@ -91,10 +92,10 @@ After this plan:
 
 ## Units
 
-The tier is a hint; the orchestrator decides with `ladder-tier.sh`. The lane is what `unit-size.sh` prints for the files listed. File counts are hand-edited files,
-including the CHANGELOG. Every unit also refreshes its mirrors with `node bin/cli.js --update
---force-render`, and its last criterion
-is `bash tests/validate.sh`, run once after the final commit. It gates the whole suite, has no
+Tier is a hint (`ladder-tier.sh` decides); lane is `unit-size.sh`'s output for the files; file counts are
+hand-edited files, CHANGELOG included. Every unit refreshes its mirrors with `node bin/cli.js --update
+--force-render`; its last criterion is `bash tests/validate.sh`, run once after the final
+commit. It gates the whole suite, has no
 `mutation:` line, and is never the only criterion that detects a behaviour.
 
 | # | id | files | lane | tier hint | contract |
@@ -157,9 +158,8 @@ outcome not marked `fail` escalates:
   starting with `~~~` or three backticks in the section (`us_section` skips a fenced `## x`; FAIL 2).
   This repo's contracts have neither. Duplicates (`sort -n` differs from `sort -nu`) escalate
   too: C6 re-runs only the first item numbered n, so a later long item n never ran (FAIL 1).
-- Exclusions in C2a: only `.claude/agent-memory` (tracked notes other personas write concurrently; rv-harden
-  note 10; no criterion reads them). Harness state needs none: what the harness writes untracked
-  (`.claude/bookkeeping/`, `.claude/reviewed/`, flags, logs) is in `bin/cli.js`'s managed `.gitignore` list.
+- C2a excludes only `.claude/agent-memory` (notes other personas write concurrently; rv-harden note 10).
+  Untracked harness state is already in `bin/cli.js`'s managed `.gitignore` list.
 - Fixtures: the stub and end-to-end repos commit a `.gitignore` that keeps `.claude/` (and the stub
   `c.md`) out of `git status`; stub packets gain a `size: files=1 lines=1 binary=0` line and `c.md`
   items matching each packet. Old labels keep their outcomes.
@@ -213,13 +213,17 @@ Files: `agents/orchestrator.md`, `templates/persona-protocol.md`, `docs/orchestr
 - The rationale gains an entry that cites the A/B figures.
 - Byte caps: source 16,384 or less, deployed 40,960 or less. Text may move to the rationale to fit.
 
-### 5. rv-mainstop: rule 3 allows `review-dispatched:`, block text names the script
+### 5. rv-mainstop: `review-dispatched:` passes, block text names the script, small D6 trip flags
 
 Files: `hooks/scripts/lib/stop-gate-core.sh`, `tests/stop-gate.test.sh`, `CHANGELOG.md`; the adapter
-cores are regenerated. This unit implements D5's rule-3 case and D6's block message. Tests
-`(rv-m1)`-`(rv-m4)`: a review-dispatched flag lets the main Stop through (rc 0) and is kept; with a plain
-flag present as well, the Stop still blocks; when `.claude/bin/unit-bookkeeping.sh` is present, the
-block text names `unit-bookkeeping.sh flag` and has no `printf`; when it is absent, the old text stays.
+cores are regenerated. This unit implements D5's rule-3 case, D6's block message and a fail-closed fix.
+Finding (rv-stopgate PASS note 1): a small writer tripping the D6 marker check is blocked once, leaves no
+flag, and the main Stop is allowed (rc 0; rc 2 on medium), so one loop-guarded retry defeats
+it. Decision (orchestrator, 2026-11-01, fail-closed): on a small D6 trip the core writes the flag
+anyway and logs `<ts> small-lane d6-trip agent=<id> flag`, so that unit needs a reviewer; untripped small
+stops still write none. Tests `(rv-m1)`-`(rv-m5)` (contract): review-dispatched flag passes and is kept;
+plus a plain flag, blocks; block text with and without the script; a small D6 trip leaves a flag that
+blocks the main Stop.
 
 ### 6. rv-routemark: reviewer dispatch marks open flags
 
@@ -244,7 +248,7 @@ go in `tests/stop-gate.test.sh`. The byte caps are those of unit 4.
 ### 8. rv-scribe: ADR-0045 and glossary
 
 Files: `docs/adr/0045-reviewer-by-lane.md`, `CONTEXT.md`, `docs/harness-glossary.md`. The ADR records
-the policy (D1, D2, D7), the evidence (43 dispatches, 43 of 43 PASS, $46.6, 37%, 41 of 41 sampled defects
+policy (D1, D2, D7), evidence (43 dispatches, 43 of 43 PASS, $46.6, 37%, 41 of 41 sampled defects
 real elsewhere) and the trade-off (Risks below). In `CONTEXT.md`, the entry "The Writer/Reviewer split"
 names the small-lane exception, and new entries define **unit lane** and **small-lane check**. In
 `docs/harness-glossary.md`, new entries define **dispatch-lane record** and **review-dispatched flag**.
@@ -264,7 +268,8 @@ below `## [Unreleased]`. Dispatch it after rv-scribe has passed.
   non-sensitive `bin/` scripts.
 - **What stays.** Every medium and full unit keeps its reviewer, its flag and the route gate, with no
   change. On small units, `writer-scope-gate.sh` still blocks out-of-scope changes; the D6 forged-marker
-  check, `protected-paths.sh`, `reviewed-path-gate.sh` and `harness-integrity-gate.sh` stay armed; and the
+  check (a trip writes the flag since unit 5; before, one retry defeated it), `protected-paths.sh`,
+  `reviewed-path-gate.sh` and `harness-integrity-gate.sh` stay armed; and the
   precheck (scope, version stamp, criteria) plus the test command run on every small unit.
 - **Gates that behave differently for a small unit.** (1) In agent-teams mode, `task-gate.sh` would block
   completion with no `.pass`, which is why D7 keeps the reviewer there. (2) H3 in `dispatch-hygiene.sh`
@@ -275,8 +280,9 @@ below `## [Unreleased]`. Dispatch it after rv-scribe has passed.
   flag still blocks the next gated dispatch, as a sticky `defer:` does today.
 - **Trust.** Before a dispatch, the lane file can be changed by the orchestrator's Bash. After the dispatch,
   the writer cannot move its own lane, because the snapshot was taken before the writer existed and the
-  first record wins. Since ADR-0044 a Bash write into `.claude/reviewed/` is not blocked, so a writer could
-  append a forged record, but only after its genuine one. The join takes the first record.
+  first record wins. Since ADR-0044 a writer's Bash may append a forged record, but only after its genuine
+  one, and the join takes the first. Residual (rv-stopgate PASS note 2, inherited like sgb-u2's open item): a
+  writer that rewrites its own transcript `.meta.json` id can join a forged record.
 - **The 600000 ms Bash ceiling.** The precheck runs each criterion with `timeout 590`, C6 re-runs each
   deferred one, and C7 adds up to 590 s, so one `check` call on a unit with long criteria can outlast a
   single Bash call. A call cut off there prints no `check:` line. That is not `pass`, so the unit is not
@@ -292,23 +298,20 @@ below `## [Unreleased]`. Dispatch it after rv-scribe has passed.
   precheck; it is a test seam set from the caller's environment. (8) Accepted, not fixed: C2a misses a
   tracked file flagged `--skip-worktree` and edited after its commit (rv-harden2 roast note); like the
   reviewer's `git diff --quiet HEAD`, it needs a deliberate writer action.
-- **Byte budget.** The orchestrator source has 646 bytes of headroom. rv-prose and rv-flagprose may
-  have to move text into `docs/orchestrator-rationale.md`.
+- **Byte budget.** Orchestrator headroom: 646 bytes; rv-prose/rv-flagprose may move text to the rationale.
 
 ## Open Questions
 
-None open. The user answered all three on 2026-11-01 with the recommended defaults: a failed or escalated
-check moves the unit to medium (D2); agent-teams mode keeps the reviewer (D7); a small unit's issue stays
-open (D8). Needs the user, not blocking: Risks "Further gaps" (1).
+None open; the user took all three defaults on 2026-11-01 (D2, D7, D8). Needs the user, not blocking:
+Risks "Further gaps" (1).
 
 ## Dispatch
 
-All eleven contracts are committed (Units-table links). Dispatch in table order, one
-unit at a time, from the contract file only. rv-stopgate needs rv-harden2's PASS.
+All eleven contracts are committed (Units table). Dispatch in table order, one unit at a time, from the
+contract only.
 
 ## Scribe update hint
 
-Knowledge proposals for rv-scribe: amend CONTEXT.md "The Writer/Reviewer split" (small-lane exception);
-add **unit lane** and **small-lane check** (CONTEXT.md); add **dispatch-lane record** and
-**review-dispatched flag** (docs/harness-glossary.md); write ADR-0045 (meets all three ADR tests: hard to
-reverse once consumers rely on it, surprising without the A/B evidence, a real trade-off of safety for cost).
+Knowledge proposals are unit 8's list. ADR-0045 meets all three ADR tests: hard to reverse, surprising
+without the A/B evidence, a real safety-for-cost trade-off. It should also record unit 5's small D6-trip
+flag and rv-stopgate PASS notes 2 (meta-file lane spoof) and 3 (exported `writer_lane` on the ports).
