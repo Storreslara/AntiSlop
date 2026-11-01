@@ -136,4 +136,53 @@ if [ "$rc_lp" = 2 ] && [ "$rc_retry" = 0 ] && [ "$rc_main" = 2 ] && [ -f "$d/.cl
   ok "(m) blocked writer stop leaves a flag the main Stop blocks on"
 else bad "(m) blocked writer stop: lp=$rc_lp retry=$rc_retry main=$rc_main"; fi
 
+# rv-stopgate: a writer whose dispatch-lane record is small (D3) leaves no flag; every miss writes one.
+# lane_case <name> <mode> <record lane> <record prompt: same|other> -> sets $d and $lpt (payload)
+lane_case() {
+  d="$(project "$1" "$2")"
+  local prompt=$'Unit: u1\n\n## Objective\nx' ph
+  ph="$(printf '%s' "$prompt" | sha256sum | cut -d' ' -f1)"
+  [ "$4" = same ] || ph="$(printf 'other' | sha256sum | cut -d' ' -f1)"
+  jq -cn --arg c "$prompt" '{type:"user",message:{role:"user",content:$c}}' > "$d/agent-lp-1.jsonl"
+  printf '{"agentType":"lead-programmer","toolUseId":"toolu_01AbC"}\n' > "$d/agent-lp-1.meta.json"
+  printf '2026-11-01T00:00:00Z tool_use_id=toolu_01AbC prompt=%s unit=u1 lane=%s\n' "$ph" "$3" \
+    > "$d/.claude/$r/dispatch-lane.log"
+  lpt="${lp%\}},\"agent_transcript_path\":\"$d/agent-lp-1.jsonl\"}"
+}
+
+lane_case s1 enforce small same
+run "$d" "$lpt"
+if [ "$rc" = 0 ] && [ ! -e "$d/.claude/.pending-review.lp-1" ] \
+  && grep -qE '^[0-9TZ:-]+ small-lane agent=lp-1 no-flag$' "$d/.claude/review-audit.log"; then
+  ok "(rv-s1) small-lane writer stop writes no flag and logs it"
+else bad "(rv-s1) small-lane stop: rc=$rc files=$(ls -A "$d/.claude")"; fi
+
+lane_case s2 enforce small same
+touch -d '2026-01-01 00:00:00' "$d/.claude/$r/.writer-dispatch-stamp"
+printf 'PASS u1 x\n' > "$d/.claude/$r/u1.pass"; touch -d '2026-01-02 00:00:00' "$d/.claude/$r/u1.pass"
+run "$d" "$lpt"
+if [ "$rc" = 2 ] && grep -q 'u1\.pass' <<< "$err"; then ok "(rv-s2) small-lane stop still runs the D6 marker check"
+else bad "(rv-s2) small-lane D6: rc=$rc err=$err"; fi
+
+lane_case s3 enforce medium same
+run "$d" "$lpt"
+if [ "$rc" = 0 ] && [ -f "$d/.claude/.pending-review.lp-1" ]; then ok "(rv-s3) medium-lane writer stop writes the flag"
+else bad "(rv-s3) medium-lane stop: rc=$rc"; fi
+
+lane_case s4 enforce small other
+run "$d" "$lpt"
+if [ "$rc" = 0 ] && [ -f "$d/.claude/.pending-review.lp-1" ]; then ok "(rv-s4) prompt-hash mismatch writes the flag"
+else bad "(rv-s4) hash mismatch: rc=$rc"; fi
+
+lane_case s5 enforce small same
+rm -f "$d/agent-lp-1.jsonl"
+run "$d" "$lpt"
+if [ "$rc" = 0 ] && [ -f "$d/.claude/.pending-review.lp-1" ]; then ok "(rv-s5) no transcript writes the flag"
+else bad "(rv-s5) no transcript: rc=$rc"; fi
+
+lane_case s6 off small same
+run "$d" "$lpt"
+if [ "$rc" = 0 ] && ! ls -A "$d/.claude" | grep -q '^\.pending-review\.'; then ok "(rv-s6) mode off: rc 0 and no flag"
+else bad "(rv-s6) mode off: rc=$rc"; fi
+
 exit "$fail"
