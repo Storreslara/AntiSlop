@@ -244,6 +244,97 @@ else
   fail=1
 fi
 
+# --- rv-routemark: an allowed reviewer dispatch marks each open flag
+#     review-dispatched:, so the main Stop does not block while it runs ---
+ts_re='^review-dispatched: [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
+route() {
+  # $1 = project dir, $2 = payload JSON -> sets $rc
+  rc=0
+  printf '%s' "$2" | CLAUDE_PROJECT_DIR="$1" bash "$gate" >/dev/null 2>&1 || rc=$?
+}
+
+r1="$(make_project rv-r1)"
+printf 'x agent=lp-1\nsecond line\n' > "$r1/.claude/.pending-review.lp-1"
+printf 'x agent=lp-2\n' > "$r1/.claude/.pending-review.lp-2"
+route "$r1" "$(payload "" reviewer)"
+if [ "$rc" = 0 ] \
+   && head -n 1 "$r1/.claude/.pending-review.lp-1" | grep -qE "$ts_re" \
+   && [ "$(tail -n +2 "$r1/.claude/.pending-review.lp-1")" = "$(printf 'x agent=lp-1\nsecond line')" ] \
+   && head -n 1 "$r1/.claude/.pending-review.lp-2" | grep -qE "$ts_re" \
+   && [ "$(tail -n +2 "$r1/.claude/.pending-review.lp-2")" = "x agent=lp-2" ] \
+   && [ "$(grep -csE '^[0-9TZ:-]+ review-dispatched flags=2$' "$r1/.claude/review-audit.log")" = 1 ]; then
+  echo "OK   (rv-r1) plain flags marked review-dispatched:, old content kept, flags=2 logged"
+else
+  echo "FAIL (rv-r1) rc=$rc lp-1=$(tr '\n' '|' < "$r1/.claude/.pending-review.lp-1") log=$(tr '\n' '|' < "$r1/.claude/review-audit.log" 2>/dev/null)"
+  fail=1
+fi
+
+d="$(make_project rv-r2)"
+printf 'defer: waiting on CI\nx agent=lp-1\n' > "$d/.claude/.pending-review.lp-1"
+printf 'review-dispatched: 2026-01-01T00:00:00Z\nx agent=lp-2\n' > "$d/.claude/.pending-review.lp-2"
+printf 'skip: abandoned\n' > "$d/.claude/.pending-review.lp-3"
+before="$(cat "$d/.claude"/.pending-review.*)"
+route "$d" "$(payload "" reviewer)"
+if [ "$rc" = 0 ] && [ "$(cat "$d/.claude"/.pending-review.*)" = "$before" ] \
+   && ! grep -qs 'review-dispatched' "$d/.claude/review-audit.log"; then
+  echo "OK   (rv-r2) defer:/skip:/review-dispatched: flags left alone, nothing logged"
+else
+  echo "FAIL (rv-r2) rc=$rc or a non-plain flag was rewritten / logged"
+  fail=1
+fi
+
+d="$(make_project rv-r3)"
+printf '{"gatedAgents":["lead-programmer"],"reviewGating":{"mode":"off"}}\n' > "$d/.claude/persona-config.json"
+printf 'x agent=lp-1\n' > "$d/.claude/.pending-review.lp-1"
+route "$d" "$(payload "" reviewer)"
+if [ "$rc" = 0 ] && [ "$(cat "$d/.claude/.pending-review.lp-1")" = "x agent=lp-1" ] \
+   && ! grep -qs 'review-dispatched' "$d/.claude/review-audit.log"; then
+  echo "OK   (rv-r3) mode off: flag untouched, nothing logged"
+else
+  echo "FAIL (rv-r3) mode off: rc=$rc or the flag was rewritten / logged"
+  fail=1
+fi
+
+d="$(make_project rv-r4)"
+printf 'x agent=lp-1\n' > "$d/.claude/.pending-review.lp-1"
+route "$d" "$(payload_named reviewer rv-2)"
+if [ "$rc" = 2 ] && [ "$(cat "$d/.claude/.pending-review.lp-1")" = "x agent=lp-1" ] \
+   && ! grep -qs 'review-dispatched' "$d/.claude/review-audit.log"; then
+  echo "OK   (rv-r4) name-refused reviewer dispatch -> exit 2, flag untouched"
+else
+  echo "FAIL (rv-r4) rc=$rc (expected 2) or the flag was rewritten / logged"
+  fail=1
+fi
+
+# A foreign-namespace reviewer's stop does not clear flags (stop-gate-core.sh grants
+# only this project's reviewer), so its dispatch must not mark them either.
+d="$(make_project routemark-foreign-ns)"
+printf 'x agent=lp-1\n' > "$d/.claude/.pending-review.lp-1"
+route "$d" "$(payload "" evil:reviewer)"
+foreign_rc="$rc"; foreign_first="$(head -n 1 "$d/.claude/.pending-review.lp-1")"
+d="$(make_project routemark-own-ns)"
+printf 'x agent=lp-1\n' > "$d/.claude/.pending-review.lp-1"
+route "$d" "$(payload "" antislop:reviewer)"
+if [ "$foreign_rc" = 0 ] && [ "$foreign_first" = "x agent=lp-1" ] && [ "$rc" = 0 ] \
+   && head -n 1 "$d/.claude/.pending-review.lp-1" | grep -qE "$ts_re"; then
+  echo "OK   (routemark-foreign-ns) evil:reviewer marks nothing; antislop:reviewer marks"
+else
+  echo "FAIL (routemark-foreign-ns) foreign rc=$foreign_rc first='$foreign_first'; own rc=$rc"
+  fail=1
+fi
+
+route "$r1" "$(payload "" lead-programmer)"
+lp_rc="$rc"
+st_rc=0
+printf '{"hook_event_name":"Stop","session_id":"s1"}' \
+  | CLAUDE_PROJECT_DIR="$r1" bash hooks/scripts/stop-gate.sh >/dev/null 2>&1 || st_rc=$?
+if [ "$lp_rc" = 2 ] && [ "$st_rc" = 0 ] && [ -f "$r1/.claude/.pending-review.lp-1" ]; then
+  echo "OK   (rv-r5) after marking: gated dispatch still exit 2, main Stop exit 0, flag kept"
+else
+  echo "FAIL (rv-r5) gated dispatch rc=$lp_rc (expected 2), main Stop rc=$st_rc (expected 0)"
+  fail=1
+fi
+
 # --- MUTATION CONTROL (reviewer-run). Reintroduce the pre-fix state - the
 # new unconditional name-forgery block removed, the existing narrower
 # reviewer-targeted `name:` check (:54-61 as of 915acec) left intact - in a
