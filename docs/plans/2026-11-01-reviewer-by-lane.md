@@ -1,7 +1,7 @@
 # Reviewer by lane: skip the reviewer on small units (2026-11-01)
 
-Slug `2026-11-01-reviewer-by-lane`, unit prefix `rv-`. Appendix (scorecard, clarifications, constitution
-check, self-check, PRD mapping, marker sweep): `docs/plans/2026-11-01-reviewer-by-lane/appendix.md`.
+Slug `2026-11-01-reviewer-by-lane`, unit prefix `rv-`. Appendix:
+`docs/plans/2026-11-01-reviewer-by-lane/appendix.md`.
 
 ## Goal
 
@@ -77,7 +77,9 @@ After this plan:
   the check line. Resolved: Open Question 3.
 - **D9 Order and release.** The tooling comes first, then its hardening (rv-harden; the user chose
   "Harden first" on 2026-11-01, after the rv-tools PASS notes), then rv-harden2 (the user chose "Fix these,
-  then add a safety net" on 2026-11-01, after the rv-harden PASS notes; one FAIL, fixed in-unit), then the lane record, then the gate, then the prose
+  then add a safety net" on 2026-11-01, after the rv-harden PASS notes; FAIL 1: duplicate numbers; FAIL 2:
+  sections `check` and `us_section` read differently, so the orchestrator chose escalating over a
+  second parser, 2026-11-01), then the lane record, then the gate, then the prose
   (lane). The recommendation 3 work follows: gate, then route gate, then prose. The scribe unit comes next
   and the 0.33.0 release is last. Content units add an `[Unreleased]` CHANGELOG bullet and bump no version
   (constitution P3). The system works after every unit: until rv-prose lands, the orchestrator still sends
@@ -89,9 +91,9 @@ After this plan:
 
 ## Units
 
-The tier is a hint; the orchestrator decides with `ladder-tier.sh`. The lane is what `unit-size.sh` prints for the files listed, checked when this plan was written. File counts are hand-edited files,
+The tier is a hint; the orchestrator decides with `ladder-tier.sh`. The lane is what `unit-size.sh` prints for the files listed. File counts are hand-edited files,
 including the CHANGELOG. Every unit also refreshes its mirrors with `node bin/cli.js --update
---force-render` (the generated `.claude/` copies, adapter cores and fileHashes), and its last criterion
+--force-render`, and its last criterion
 is `bash tests/validate.sh`, run once after the final commit. It gates the whole suite, has no
 `mutation:` line, and is never the only criterion that detects a behaviour.
 
@@ -111,19 +113,15 @@ is `bash tests/validate.sh`, run once after the final commit. It gates the whole
 
 ### 1. rv-tools: lane floor, small-lane check, flag channel (PASS)
 
-Files: `bin/unit-size.sh`, `bin/unit-bookkeeping.sh`, `tests/unit-size.test.sh`,
-`tests/unit-bookkeeping.test.sh`, `CHANGELOG.md`. It added `unit-size.sh --at-least` (D1), `check` (D2;
-rules C1-C8, now in unit 1c's table) and `flag` (D6: rewrites the first line of every existing flag,
-never creates one, exits 1 when none). `check` exits 0 on every outcome (on `fail` the packet follows its
-line) and 2 on bad usage, unit id or baseline. Tests `(rv-a1)`-`(rv-a3)`,
-`(rv-c1)`-`(rv-c8)`, `(rv-f1)`, `(rv-f2)`.
+It added `unit-size.sh --at-least` (D1), `check` (D2; rules in unit 1c's table) and `flag` (D6:
+rewrites the first line of every existing flag, never creates one, exits 1 when none). `check` exits 0 on
+every outcome (on `fail` the packet follows its line) and 2 on bad usage, unit id or baseline.
 
 ### 1b. rv-harden: close the rv-tools PASS notes (PASS)
 
-Files: as rv-tools. It added C2a, C2b, C4a, C5's non-numeric case, C6's `</dev/null`, C7's contract and
-cwd cases, the `flag` symlink skip and `dd conv=notrunc,nocreat` write, and `unit-size.sh`'s exit 2 on an
-argument after `--contract <path>`. Tests `(rv-a4)`, `(rv-h1)`-`(rv-h9)`, `(rv-e1)`-`(rv-e3)`. Its PASS
-notes (`.claude/reviewed/rv-harden.pass`) are the source of unit 1c.
+It added C2a, C2b, C4a, C5's non-numeric case, C6's `</dev/null`, C7's contract and cwd cases, the `flag`
+symlink skip and `dd conv=notrunc,nocreat` write, and `unit-size.sh`'s exit 2 on an argument after
+`--contract <path>`. Its PASS notes became unit 1c.
 
 ### 1c. rv-harden2: `check` is fail-closed
 
@@ -146,16 +144,19 @@ outcome not marked `fail` escalates:
 | C4b | exactly one `^size: files=<N> ` line, N not 0 | no line: `precheck-error`; N 0: `empty-range` |
 | C5 | `judge=0` literally (a 20-digit value is not 0) | escalate `judge` |
 | C6 | `deferred long` lines = `deferred=`; each re-run prints `^criterion <n>: pass exit=[0-9]+$` | count: `precheck-error`; exit 124: `timeout`; else fail `criterion-<n>` |
-| C7, contract | each `criterion` line is `pass exit=<n>` or `deferred long`; declared numbers non-empty, unique, and equal to the packet's (sorted) | other line: `precheck-error`; none: `no-criteria`; differ or duplicate: `criteria-mismatch` |
+| C7, contract | each `criterion` line is `pass exit=<n>` or `deferred long`; one `## Acceptance criteria` heading, no fence line in its section; declared numbers non-empty, unique, equal to the packet's (sorted) | other line: `precheck-error`; none: `no-criteria`; heading count not 1, a fence, numbers differ or repeat: `criteria-mismatch` |
 | C7, none | `.testAndLintCommand` non-empty, exits 0 under `timeout 590` from the repo top | empty: `no-criteria`; 124: `timeout`; else fail `test-command` |
 | C8 | all of the above | pass `precheck` |
 
-- Declared numbers: lines matching `^[0-9]+\. ` between `## Acceptance criteria` and the next `## `
-  line, read by `check`'s own `sed`/`awk` from the working-tree contract, never through `us_section` or
+- Declared numbers: lines matching `^[0-9]+\. ` from the one `## Acceptance criteria` heading to the next
+  `## ` line or end of file, read by `check`'s own `sed`/`awk` from the working-tree contract, never through `us_section` or
   the precheck. That copy is the baseline copy here: C2a proved the tree clean, and the real precheck
-  fails a contract that is not at the baseline or changed since. An unreadable contract escalates
-  `criteria-mismatch`. Duplicates (`sort -n` differs from `sort -nu`) escalate too: C6 re-runs only the
-  first item numbered n, so a later long item n never ran (rv-harden2 FAIL).
+  fails a contract that is not at the baseline or changed since. `check` does not copy `us_section`'s
+  parser: where the two could disagree it escalates `criteria-mismatch`: an unreadable contract, a
+  heading count other than 1 (a second heading ends `check`'s range, not `us_section`'s), or a line
+  starting with `~~~` or three backticks in the section (`us_section` skips a fenced `## x`; FAIL 2).
+  This repo's contracts have neither. Duplicates (`sort -n` differs from `sort -nu`) escalate
+  too: C6 re-runs only the first item numbered n, so a later long item n never ran (FAIL 1).
 - Exclusions in C2a: only `.claude/agent-memory` (tracked notes other personas write concurrently; rv-harden
   note 10; no criterion reads them). Harness state needs none: what the harness writes untracked
   (`.claude/bookkeeping/`, `.claude/reviewed/`, flags, logs) is in `bin/cli.js`'s managed `.gitignore` list.
@@ -167,11 +168,13 @@ outcome not marked `fail` escalates:
   commit and its revert, and a `size: files=0` packet: `empty-range`; `(rv-k5)` `judge=0 judge=5`,
   `result=pass` with `fails=3`, `unit=other`, no `size:` line: each `precheck-error`; `(rv-k6)`
   `judge=99999999999999999999`: `judge`; `(rv-k7)` declared 1,2 against packet 1, and against 1,3, and
-  `(rv-k10)` declared 1,1 against packet 1,1: `criteria-mismatch`; `(rv-k8)` a `criterion 1: fail` line
+  `(rv-k10)` declared 1,1 against packet 1,1, and `(rv-k11)` a second heading, and a `~~~`/`## x`/`~~~`
+  fence, against packet 1: `criteria-mismatch`; `(rv-k8)` a `criterion 1: fail` line
   under `fails=0`, and `deferred=2` with one deferred line: `precheck-error`; `(rv-k9)` a re-run line
   `criterion 3: pass` with no `exit=`: `fail criterion-3`. Real precheck: `(rv-e4)` an untracked file a
   criterion reads: `uncommitted`; `(rv-e5)` criterion 1 plus `2. run: false`, and `(rv-e9)` a short and a
-  long item both numbered 1: `criteria-mismatch`; `(rv-e6)` an `--allow-empty` range and `(rv-e8)` one
+  long item both numbered 1, and `(rv-e10)` FAIL 2's two-heading contract and its fenced variant:
+  `criteria-mismatch`; `(rv-e6)` an `--allow-empty` range and `(rv-e8)` one
   changing only `docs/plans/`: `empty-range`; `(rv-e7)` a descendant baseline: `bad-baseline`.
 
 ### 2. rv-lanerec: dispatch-time lane snapshot
@@ -284,7 +287,7 @@ below `## [Unreleased]`. Dispatch it after rv-scribe has passed.
   unit in a repo with no stamp file. (3) `check` with no `--contract` when one exists runs only the test
   command; rv-prose must pass it. (4) A baseline later than the writer's first commit is still an
   ancestor; `check` sees only the range it is given. (5) Not fixed: `flag` writes through a hard link
-  (rv-harden note 9, no capability gain) and `bin/unit-size.sh:6`'s stale header (note 11). (6) The mirror
+  and `bin/unit-size.sh:6` has a stale header (rv-harden notes 9, 11). (6) The mirror
   criteria's `git diff --quiet` misses an untracked generated file. (7) `UB_PRECHECK` replaces the
   precheck; it is a test seam set from the caller's environment. (8) Accepted, not fixed: C2a misses a
   tracked file flagged `--skip-worktree` and edited after its commit (rv-harden2 roast note); like the
@@ -300,10 +303,8 @@ open (D8). Needs the user, not blocking: Risks "Further gaps" (1).
 
 ## Dispatch
 
-All eleven contracts are written and committed; each Units-table link goes to its contract file. Dispatch
-in table order, one unit at a time, from the contract file only: rv-tools (PASS), rv-harden (PASS),
-rv-harden2, rv-lanerec, rv-stopgate, rv-prose, rv-mainstop, rv-routemark, rv-flagprose, rv-scribe,
-rv-release. rv-stopgate needs rv-harden2's PASS.
+All eleven contracts are committed (Units-table links). Dispatch in table order, one
+unit at a time, from the contract file only. rv-stopgate needs rv-harden2's PASS.
 
 ## Scribe update hint
 
