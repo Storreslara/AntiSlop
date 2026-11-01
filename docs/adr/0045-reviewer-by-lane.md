@@ -6,7 +6,7 @@ Related: ADR-0043, ADR-0044
 
 ## Context
 
-In the A/B harness the reviewer ran 43 dispatches and returned PASS 43 of 43 times. It cost $46.6, 37% of Arm B spend. Of 41 sampled defects, 41 of 41 were real and were caught elsewhere (by tests, the precheck or the scope gates), not by a reviewer verdict. No reviewer verdict changed an outcome, though the evals were five toy repos.
+In the A/B harness the reviewer ran 43 dispatches and returned PASS 43 of 43 times. It cost $46.6, 37% of Arm B spend. Elsewhere the reviewer's own findings were real (41 of 41 sampled defects), so it stays where the risk is. No reviewer verdict changed an outcome, though the evals were five toy repos.
 
 ## Decision
 
@@ -18,7 +18,7 @@ In the A/B harness the reviewer ran 43 dispatches and returned PASS 43 of 43 tim
 ## Consequences
 
 - A small unit gets no independent review. A defect that passes its own criteria and stays in scope ships without a second reader. The exemption mostly reaches docs, tests and non-sensitive `bin/` scripts.
-- The check was hardened over three review rounds in rv-harden2. It is fail-closed with one `pass` path, and escalates on: no criteria, sensitive paths, a dirty or untracked tree, an empty range or bad baseline, a criteria-count mismatch, a second criteria heading, or any fence in the criteria section.
+- The check was hardened over three review rounds in rv-harden2. It is fail-closed with one `pass` path. It escalates on: no criteria, sensitive paths, an empty range or bad baseline, a criteria-count mismatch, a second criteria heading, or any fence in the criteria section. A dirty or untracked tree gives `fail uncommitted` (not an escalate), and so does a failing criterion or test command.
 - rv-stopgate: only an exact `small` dispatch-lane record skips the pending-review flag. rv-mainstop made a small-lane trip of the forged-marker check write the flag anyway.
 - rv-routemark: marking a flag `review-dispatched:` requires the reviewer's namespace to match the flag's grant. This narrows the contract's "every flag" wording.
 - Accepted residuals:
