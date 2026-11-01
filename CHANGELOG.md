@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - **Small-lane tooling (rv-tools).** `bin/unit-size.sh` takes `--at-least <medium|full>` and records the heavier of the measured lane and the floor (`reason=at-least`). `bin/unit-bookkeeping.sh check <unit> <baseline> [--contract <path>]` runs the mechanical small-lane check C1-C8 that replaces the reviewer on a small unit, and `flag <defer|skip> <reason>` writes the first line of every existing pending-review flag without a Bash redirect into `.claude/`.
+- **Small-lane check hardened (rv-harden).** `unit-bookkeeping.sh check` fails `uncommitted` on a dirty tree, escalates `empty-range`, `sensitive` and `precheck-error` (a non-numeric `judge=`), runs the per-criterion precheck with `</dev/null`, escalates `no-criteria` under `--contract` when the packet has no criterion line, and runs the test command from the repo top. `flag` skips symlinks and writes with `dd conv=notrunc,nocreat`. `unit-size.sh` exits 2 on any argument after `--contract <path>`.
 
 ## [0.32.0] - 2026-10-30
 

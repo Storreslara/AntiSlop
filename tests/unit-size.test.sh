@@ -168,6 +168,10 @@ is "(rv-a2) a medium lane is not lifted by a medium floor" 'lane: medium files=5
 bash "$US" ra3 --at-least huge -- src/a.js >/dev/null 2>&1; rc=$?
 [ "$rc" = 2 ] && [ ! -e "$BK/ra3.lane" ] && ok "(rv-a3) a bad floor exits 2, no file" || bad "(rv-a3) bad floor: rc=$rc"
 
+printf '## Affected files\n- `src/a.js`\n' > "$T/c.md"
+bash "$US" ra4 --contract "$T/c.md" --at-least medium >/dev/null 2>&1; rc=$?
+[ "$rc" = 2 ] && [ ! -e "$BK/ra4.lane" ] && [ ! -e "$BK/ra4.scope" ] && ok "(rv-a4) an argument after --contract <path> exits 2, no file" || bad "(rv-a4) rc=$rc"
+
 # (k) prose: the orchestrator routes on the lane, downgrade-only, medium lane without spec-master.
 flat() { tr -s ' \n' ' ' < "$1"; }
 for f in agents/orchestrator.md .claude/agents/orchestrator.md; do

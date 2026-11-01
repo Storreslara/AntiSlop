@@ -146,7 +146,7 @@ setup small 'garbage'; is_ck "(rv-c3) bad first line" 'check: escalate unit=uc r
 setup small 'precheck: result=fail unit=uc range=a..b fails=1 deferred=0 judge=0' 'scope: fail x'
 is_ck "(rv-c4)" 'check: fail unit=uc reason=precheck' --contract c.md
 UB_PRECHECK="$T/stub/pre" bash "$UB" check uc "$BASE" --contract c.md | grep -qx 'scope: fail x' && ok "(rv-c4) packet printed" || bad "(rv-c4) packet missing"
-setup small 'precheck: result=pass unit=uc range=a..b fails=0 deferred=0 judge=2'; is_ck "(rv-c5)" 'check: escalate unit=uc reason=judge' --contract c.md
+setup small 'precheck: result=pass unit=uc range=a..b fails=0 deferred=0 judge=2' 'criterion 1: pass exit=0'; is_ck "(rv-c5)" 'check: escalate unit=uc reason=judge' --contract c.md
 setup small 'precheck: result=pass unit=uc range=a..b fails=0 deferred=1 judge=0' 'criterion 3: deferred long'
 echo 'criterion 3: fail exit=124 timeout' > "$T/stub/crit.3"; is_ck "(rv-c6)" 'check: escalate unit=uc reason=timeout' --contract c.md
 echo 'criterion 3: fail exit=1 want=0' > "$T/stub/crit.3"; is_ck "(rv-c6) other failure" 'check: fail unit=uc reason=criterion-3' --contract c.md
@@ -154,10 +154,35 @@ echo 'criterion 3: pass exit=0' > "$T/stub/crit.3"; is_ck "(rv-c6) deferred pass
 setup small "$PASSP"; is_ck "(rv-c7) no command" 'check: escalate unit=uc reason=no-criteria'
 echo '{"testAndLintCommand":"exit 3"}' > "$T/repo/.claude/persona-config.json"; is_ck "(rv-c7) failing command" 'check: fail unit=uc reason=test-command'
 echo '{"testAndLintCommand":"exit 124"}' > "$T/repo/.claude/persona-config.json"; is_ck "(rv-c7) timeout" 'check: escalate unit=uc reason=timeout'
+setup small "$PASSP" 'criterion 1: pass exit=0'
 echo '{"testAndLintCommand":"exit 3"}' > "$T/repo/.claude/persona-config.json"; is_ck "(rv-c7) contract skips the command" 'check: pass unit=uc reason=precheck' --contract c.md
 echo '{"testAndLintCommand":"true"}' > "$T/repo/.claude/persona-config.json"; is_ck "(rv-c8)" 'check: pass unit=uc reason=precheck'
 tail -n1 "$LOG" | grep -qE "^RULING $TS unit=uc decision=small-lane check: pass precheck\$" && ok "(rv-c8) ruling appended" || bad "(rv-c8) ruling: $(tail -n1 "$LOG")"
 bash "$UB" check uc 'not-a-ref' >/dev/null 2>&1; [ "$?" = 2 ] && ok "(rv-c8) bad baseline exits 2" || bad "(rv-c8) bad baseline"
+
+# rv-harden: C2a, C2b, C4a, C5 non-numeric, C6 stdin, C7 cwd and no-criteria, flag symlink and TOCTOU.
+setup small "$PASSP" 'criterion 1: pass exit=0'; is_ck "(rv-h1) with a criterion line" 'check: pass unit=uc reason=precheck' --contract c.md
+setup small "$PASSP"; is_ck "(rv-h1)" 'check: escalate unit=uc reason=no-criteria' --contract c.md
+setup small "$PASSP" 'sensitive: hooks/x.sh'; is_ck "(rv-h2)" 'check: escalate unit=uc reason=sensitive' --contract c.md
+setup small "$PASSP" 'criterion 1: pass exit=0'; echo y >> a.txt; is_ck "(rv-h3)" 'check: fail unit=uc reason=uncommitted' --contract c.md
+git checkout -q -- a.txt
+setup small "$PASSP" 'criterion 1: pass exit=0'
+[ "$(UB_PRECHECK="$T/stub/pre" bash "$UB" check uc HEAD --contract c.md | head -n1)" = 'check: escalate unit=uc reason=empty-range' ] && ok "(rv-h4) baseline HEAD" || bad "(rv-h4)"
+setup small 'precheck: result=pass unit=uc range=a..b fails=0 deferred=0 judge=x' 'criterion 1: pass exit=0'; is_ck "(rv-h5)" 'check: escalate unit=uc reason=precheck-error' --contract c.md
+cat > "$T/stub/pre2" << 'STUB'
+#!/usr/bin/env bash
+S="$(dirname "$0")"
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = --criterion ]; then cat > /dev/null; cat "$S/crit.$2"; exit 0; fi; shift
+done
+cat "$S/packet"
+STUB
+setup small "$PASSP" 'criterion 1: deferred long' 'criterion 2: deferred long'
+echo 'criterion 1: pass exit=0' > "$T/stub/crit.1"; echo 'criterion 2: fail exit=1 want=0' > "$T/stub/crit.2"
+[ "$(UB_PRECHECK="$T/stub/pre2" bash "$UB" check uc "$BASE" --contract c.md < /dev/zero 2>&1 | head -n1)" = 'check: fail unit=uc reason=criterion-2' ] && ok "(rv-h6) precheck stdin is /dev/null" || bad "(rv-h6)"
+mkdir -p sub; setup small "$PASSP"; echo '{"testAndLintCommand":"test -f a.txt"}' > "$T/repo/.claude/persona-config.json"
+[ "$(cd sub && UB_PRECHECK="$T/stub/pre" bash "$UB" check uc "$BASE" | head -n1)" = 'check: pass unit=uc reason=precheck' ] && ok "(rv-h7) command runs from the repo top" || bad "(rv-h7)"
+rm -rf sub "$T/repo/.claude/persona-config.json"
 
 P1="$T/repo/.claude/.pending-review.a1"; P2="$T/repo/.claude/.pending-review.a2"
 printf 'pending a1\n' > "$P1"; printf 'pending a2\n' > "$P2"
@@ -168,5 +193,29 @@ bash "$UB" flag bogus x >/dev/null 2>&1; r2=$?
 rm -f "$P1" "$P2"
 bash "$UB" flag skip 'gone' >/dev/null 2>&1; r3=$?
 [ "$r1" = 2 ] && [ "$r2" = 2 ] && [ "$r3" = 1 ] && ! ls "$T/repo/.claude"/.pending-review.* >/dev/null 2>&1 && ok "(rv-f2) blank reason exits 2, missing flag exits 1 and none is created" || bad "(rv-f2) r1=$r1 r2=$r2 r3=$r3"
+
+# rv-harden flag: a symlinked flag is skipped; a flag deleted mid-write is not re-created.
+printf 'real\n' > "$T/target"; ln -s "$T/target" "$P1"
+o="$(bash "$UB" flag defer 'sym')"; rc=$?
+[ "$rc" = 1 ] && [ "$o" = 'flag: defer flags=0' ] && [ "$(cat "$T/target")" = real ] && ok "(rv-h8) symlinked flag untouched and not counted" || bad "(rv-h8) rc=$rc out=$o"
+rm -f "$P1"; printf 'pending a1\n' > "$P1"
+mkdir -p "$T/shim"; printf '#!/usr/bin/env bash\nrm -f "%s"\nexec /bin/dd "$@"\n' "$P1" > "$T/shim/dd"; chmod +x "$T/shim/dd"
+o="$(PATH="$T/shim:$PATH" bash "$UB" flag defer 'race')"; rc=$?
+[ "$rc" = 1 ] && [ "$o" = 'flag: defer flags=0' ] && [ ! -e "$P1" ] && ok "(rv-h9) a flag deleted mid-write is not re-created" || bad "(rv-h9) rc=$rc out=$o exists=$(ls "$P1" 2>&1)"
+
+# rv-harden end to end: the real precheck in a scratch repo whose contract is committed at the baseline.
+E="$T/e2e"; mkdir -p "$E" && cd "$E" || exit 1
+git init -q . && mkdir -p .claude/bookkeeping hooks
+e_run() { # <criteria block> <listed file>
+  printf '## Affected files\n- `%s`\n\n## Acceptance criteria\n%s\n' "$2" "$1" > c.md
+  git add -A . && g commit -q -m base && local b; b="$(git rev-parse HEAD)"
+  echo x > "$2" && git add -A . && g commit -q -m work
+  echo 'lane: small files=1 reason=paths' > .claude/bookkeeping/ue.lane
+  CLAUDE_PROJECT_DIR="$E" bash "$UB" check ue "$b" --contract c.md | head -n1
+}
+want() { [ "$2" = "$3" ] && ok "$1 $3" || bad "$1: want '$3', got '$2'"; }
+want "(rv-e1)" "$(e_run $'1. run: `true`\n   exit: 0\n   stdout: empty' a.txt)" 'check: pass unit=ue reason=precheck'
+want "(rv-e2)" "$(e_run 'none' b.txt)" 'check: escalate unit=ue reason=no-criteria'
+want "(rv-e3)" "$(e_run $'1. run: `true`\n   exit: 0' hooks/x.sh)" 'check: escalate unit=ue reason=sensitive'
 
 exit "$fail"
