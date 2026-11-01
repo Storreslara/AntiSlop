@@ -213,6 +213,8 @@ setup small "$PASSP" "$OKP"; printf '## Acceptance criteria\n1. run: `true`\n2. 
 is_ck "(rv-k7) declared 1,2 packet 1" 'check: escalate unit=uc reason=criteria-mismatch' --contract c.md
 setup small "$PASSP" "$OKP" 'criterion 3: pass exit=0'; printf '## Acceptance criteria\n1. run: `true`\n2. run: `true`\n' > c.md
 is_ck "(rv-k7) declared 1,2 packet 1,3" 'check: escalate unit=uc reason=criteria-mismatch' --contract c.md
+setup small "$PASSP" "$OKP"; printf '## Acceptance criteria\n1. run: `true`\n1. run: `false` (Bash tool timeout 600000 ms)\n' > c.md
+is_ck "(rv-k10) duplicate declared number" 'check: escalate unit=uc reason=criteria-mismatch' --contract c.md
 setup small "$PASSP" 'criterion 1: fail exit=1 want=0'; is_ck "(rv-k8) fail line under fails=0" 'check: escalate unit=uc reason=precheck-error' --contract c.md
 setup small "${PASSP/deferred=0/deferred=2}" 'criterion 3: deferred long'; is_ck "(rv-k8) deferred count" 'check: escalate unit=uc reason=precheck-error' --contract c.md
 setup small "${PASSP/deferred=0/deferred=1}" 'criterion 3: deferred long'; echo 'criterion 3: pass' > "$T/stub/crit.3"
@@ -262,5 +264,6 @@ want "(rv-e5)" "$(e_run "$CRIT1"$'\n2. run: false' d5.txt)" 'check: escalate uni
 want "(rv-e6)" "$(EMPTY=1 e_run "$CRIT1" d6.txt)" 'check: escalate unit=ue reason=empty-range'
 want "(rv-e7)" "$(DESC=1 e_run "$CRIT1" d7.txt)" 'check: escalate unit=ue reason=bad-baseline'
 want "(rv-e8)" "$(e_run "$CRIT1" docs/plans/p.md)" 'check: escalate unit=ue reason=empty-range'
+want "(rv-e9)" "$(e_run "$CRIT1"$'\n1. run: `false` (Bash tool timeout 600000 ms)\n   exit: 0\n   stdout: empty' d9.txt)" 'check: escalate unit=ue reason=criteria-mismatch'
 
 exit "$fail"
