@@ -201,6 +201,25 @@ the system's core safety property: the
   (the default). Under [[review gating off]] the split holds by persona
   prose only and the reviewer's verdict is an [[advisory verdict]]; see
   [ADR-0038](docs/adr/0038-review-gating-runtime-switch.md).
+  One exception: a unit in the small [[unit lane]] skips the reviewer and is
+  accepted by the [[small-lane check]] instead (subagent-orchestrator mode
+  only; in agent-teams mode every unit keeps its reviewer); see
+  [ADR-0045](docs/adr/0045-reviewer-by-lane.md).
+
+**unit lane**:
+the size class of a unit of work, `small`, `medium` or `full`, computed by
+  `bin/unit-size.sh` from the unit's listed files and recorded in
+  `.claude/bookkeeping/<unit>.lane`. A unit is small when it touches 4 files or
+  fewer, all measurable, none on a sensitive path, and has no recorded FAIL.
+  Only the small lane skips the reviewer. The orchestrator may move a unit to a
+  heavier lane, never a lighter one, and the move is recorded.
+
+**small-lane check**:
+the mechanical check that replaces the reviewer for a unit in the small
+  [[unit lane]]: `unit-bookkeeping.sh check`. It prints `pass`, `fail` or
+  `escalate`. Only `pass` means done. A `fail` or an `escalate` (a check that
+  cannot be decided mechanically) moves the unit to the medium lane, where the
+  reviewer applies.
 
 **review gating off** (everyday name: *gateless mode*):
 Amended (0.32.0): `stop-gate.sh` exits at once under `off` and runs no test+lint check, so that check is not among the armed gates listed below (unit lp-stopgate).
