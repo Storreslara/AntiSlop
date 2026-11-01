@@ -185,4 +185,43 @@ run "$d" "$lpt"
 if [ "$rc" = 0 ] && ! ls -A "$d/.claude" | grep -q '^\.pending-review\.'; then ok "(rv-s6) mode off: rc 0 and no flag"
 else bad "(rv-s6) mode off: rc=$rc"; fi
 
+# rv-mainstop: a review-dispatched flag lets the main Stop through; the block text names the bookkeeping tool.
+d="$(project m1 enforce)"
+printf 'review-dispatched: u1\n' > "$d/.claude/.pending-review.lp-1"
+run "$d" "$main"
+if [ "$rc" = 0 ] && [ -f "$d/.claude/.pending-review.lp-1" ] && [ ! -e "$d/.claude/review-audit.log" ]; then
+  ok "(rv-m1) review-dispatched flag lets the main Stop through, kept, unlogged"
+else bad "(rv-m1) review-dispatched: rc=$rc err=$err"; fi
+
+printf 'x agent=lp-2\n' > "$d/.claude/.pending-review.lp-2"
+run "$d" "$main"
+if [ "$rc" = 2 ] && grep -q 'awaiting review' <<< "$err"; then ok "(rv-m2) a plain flag still blocks beside a review-dispatched one"
+else bad "(rv-m2) plain flag: rc=$rc err=$err"; fi
+
+d="$(project m3 enforce)"
+mkdir -p "$d/.claude/bin"; : > "$d/.claude/bin/unit-bookkeeping.sh"
+printf 'x agent=lp-1\n' > "$d/.claude/.pending-review.lp-1"
+run "$d" "$main"
+if [ "$rc" = 2 ] && grep -q 'bash .claude/bin/unit-bookkeeping.sh flag <defer|skip> <reason>' <<< "$err" \
+   && ! grep -q 'printf' <<< "$err"; then ok "(rv-m3) script present: block text names unit-bookkeeping.sh flag, no printf"
+else bad "(rv-m3) script present: rc=$rc err=$err"; fi
+
+d="$(project m4 enforce)"
+printf 'x agent=lp-1\n' > "$d/.claude/.pending-review.lp-1"
+run "$d" "$main"
+if [ "$rc" = 2 ] && grep -q 'printf "defer|skip: <reason>' <<< "$err" && ! grep -q 'unit-bookkeeping' <<< "$err"; then
+  ok "(rv-m4) script absent: old block text"
+else bad "(rv-m4) script absent: rc=$rc err=$err"; fi
+
+lane_case m5 enforce small same
+touch -d '2026-01-01 00:00:00' "$d/.claude/$r/.writer-dispatch-stamp"
+printf 'PASS u1 x\n' > "$d/.claude/$r/u1.pass"; touch -d '2026-01-02 00:00:00' "$d/.claude/$r/u1.pass"
+run "$d" "$lpt"; rc_lp="$rc"
+run "$d" "$main"; rc_main="$rc"
+if [ "$rc_lp" = 2 ] && [ "$rc_main" = 2 ] && [ -f "$d/.claude/.pending-review.lp-1" ] \
+   && grep -qE '^[0-9TZ:-]+ small-lane d6-trip agent=lp-1 flag$' "$d/.claude/review-audit.log" \
+   && ! grep -q 'no-flag' "$d/.claude/review-audit.log"; then
+  ok "(rv-m5) small-lane D6 trip writes the flag and logs d6-trip"
+else bad "(rv-m5) small D6 trip: lp=$rc_lp main=$rc_main"; fi
+
 exit "$fail"

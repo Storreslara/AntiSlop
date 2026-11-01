@@ -16,12 +16,14 @@
 #  1) reviewGating.mode "off" -> allow.
 #  2) this project's reviewer's SubagentStop -> delete every pending-review flag, whatever the
 #     verdict, and allow.
-#  3) main Stop -> block while a flag's first line starts with neither "skip: <reason>" nor
-#     "defer: <reason>". skip: is logged and deletes its flag; defer: is logged and keeps it.
+#  3) main Stop -> block while a flag's first line starts with none of "skip: <reason>", "defer: <reason>"
+#     or "review-dispatched: ". skip: is logged and deletes its flag; defer: is logged and keeps it;
+#     review-dispatched: keeps it, logs nothing. The block text names unit-bookkeeping.sh when present.
 #  4) a stop by an agent not in gatedAgents (default lead-programmer) -> allow.
 #  5) a non-empty WIP sentinel -> log, delete, allow.
 #  6) a gated SubagentStop -> write the flag (when writer_lane is "small", write none and log
-#     "small-lane agent=<id> no-flag" to review-audit.log), then block, naming the file, when a
+#     "small-lane agent=<id> no-flag" to review-audit.log, unless the marker check below trips: then
+#     write it and log "small-lane d6-trip agent=<id> flag"), then block, naming the file, when a
 #     *.pass, *.fail or *.blocked marker is newer than reviewed/.writer-dispatch-stamp (touched by
 #     dispatch-hygiene.sh at each gated dispatch; no stamp, no check; small lane included). The flag
 #     comes first because the loop-guarded stop after a block is allowed without reaching this rule.
@@ -61,10 +63,14 @@ if [ "$hook_event" = "Stop" ]; then
         state_append_audit_log "review-audit.log" "$(utc) ${first}"
         state_delete_pending_review "${flag##*/.pending-review.}"
         ;;
+      "review-dispatched: "*) ;;
       *) blocked=true ;;
     esac
   done
   if [ "$blocked" = true ]; then
+    if [ -f "${dot}/bin/unit-bookkeeping.sh" ]; then
+      block "Unit awaiting review. Dispatch reviewer, or: bash ${dot_label}/bin/unit-bookkeeping.sh flag <defer|skip> <reason> (defer: sticky/owed, skip: delete/abandon). Empty reason rejected. Only works on a flag that currently exists."
+    fi
     block "Unit awaiting review. Dispatch reviewer, or: printf \"defer|skip: <reason>\\n\" > ${dot_label}/.pending-review.<agent-id> (defer: sticky/owed, skip: delete/abandon). Empty reason rejected. Write defer:/skip: only into a flag that currently exists."
   fi
 fi
@@ -94,18 +100,21 @@ fi
 
 [ "$hook_event" = "SubagentStop" ] || allow
 
-if [ "${writer_lane:-}" = "small" ]; then
+stamp="${dot}/reviewed/.writer-dispatch-stamp"
+tripped=""
+if [ -f "$stamp" ]; then
+  for marker in "${dot}"/reviewed/*.pass "${dot}"/reviewed/*.fail "${dot}"/reviewed/*.blocked; do
+    if [ "$marker" -nt "$stamp" ]; then tripped="$marker"; break; fi
+  done
+fi
+if [ "${writer_lane:-}" = "small" ] && [ -z "$tripped" ]; then
   state_append_audit_log "review-audit.log" "$(utc) small-lane agent=${agent_id} no-flag"
 else
   state_write_pending_review "$agent_id" "$(printf '%s agent=%s' "$(utc)" "$agent_id")"
+  [ "${writer_lane:-}" != "small" ] || state_append_audit_log "review-audit.log" "$(utc) small-lane d6-trip agent=${agent_id} flag"
 fi
-stamp="${dot}/reviewed/.writer-dispatch-stamp"
-if [ -f "$stamp" ]; then
-  for marker in "${dot}"/reviewed/*.pass "${dot}"/reviewed/*.fail "${dot}"/reviewed/*.blocked; do
-    if [ "$marker" -nt "$stamp" ]; then
-      block "A verdict marker appeared during this writer's dispatch: ${dot_label}/reviewed/${marker##*/}. Only the reviewer writes verdict markers. Report this to your dispatcher and wait."
-    fi
-  done
+if [ -n "$tripped" ]; then
+  block "A verdict marker appeared during this writer's dispatch: ${dot_label}/reviewed/${tripped##*/}. Only the reviewer writes verdict markers. Report this to your dispatcher and wait."
 fi
 
 allow
