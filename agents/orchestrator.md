@@ -109,7 +109,7 @@ add `Mode: advisory` as the **literal second non-blank line**, immediately after
 dispatch marks open flags `review-dispatched:`, so your turn may end; any other defer or skip is `bash
 .claude/bin/unit-bookkeeping.sh flag defer|skip <reason>`.
 
-Reviewer naming: in subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter;
+Reviewer (if present): in subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter;
 in agent-teams mode it must be exactly `reviewer`. Resume a reviewer by message only for its own unit.
 **Check the roster before resuming one by name**, and dispatch fresh if it holds another unit (N3).
 
