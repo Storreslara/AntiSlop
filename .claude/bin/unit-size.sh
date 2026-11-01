@@ -33,6 +33,7 @@ lib="$dir/../hooks/scripts/lib"
 declare -F touches_sensitive_path us_entries us_safe_path >/dev/null || emit full 0 unmeasurable
 src=none
 if [ "${1:-}" = --contract ]; then
+  [ "$#" -le 2 ] || { echo "unit-size: nothing may follow --contract <path>" >&2; exit 2; }
   [ -n "${2:-}" ] && [ -f "$2" ] || emit full 0 no-input
   us_entries "$2" > "$W/raw"; src=contract
 elif [ "${1:-}" = -- ]; then

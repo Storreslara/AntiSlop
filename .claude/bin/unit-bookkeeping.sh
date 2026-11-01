@@ -114,24 +114,30 @@ check_cmd() {
   CK_UNIT="$unit"; CK_PACKET=""
   [ "$(sed -n '1s/^lane: \([a-z]*\) .*/\1/p' "$bk/$unit.lane" 2>/dev/null)" = small ] || finish escalate not-small
   [ ! -e "$state/reviewed/$unit.fail" ] || finish escalate fail-record
+  git diff --quiet HEAD 2>/dev/null || finish fail uncommitted
+  [ "$(git rev-parse "$base^{commit}")" != "$(git rev-parse HEAD)" ] || finish escalate empty-range
   CK_PACKET="$(bash "$pc" "$unit" "$base" ${cargs[@]+"${cargs[@]}"} 2>/dev/null)"; rc=$?
   first="$(printf '%s\n' "$CK_PACKET" | head -n1)"
   { [ "$rc" -eq 0 ] && [[ "$first" == "precheck: result="* ]]; } || finish escalate precheck-error
   case " $first " in *" result=fail "*) finish fail precheck ;; esac
+  printf '%s\n' "$CK_PACKET" | grep -q '^sensitive: ' && finish escalate sensitive
   n="${first##* judge=}"
-  [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -gt 0 ] && finish escalate judge
+  [[ "$n" =~ ^[0-9]+$ ]] || finish escalate precheck-error
+  [ "$n" -gt 0 ] && finish escalate judge
   while read -r n; do
-    line="$(bash "$pc" "$unit" "$base" ${cargs[@]+"${cargs[@]}"} --criterion "$n" 2>/dev/null | head -n1)"
+    line="$(bash "$pc" "$unit" "$base" ${cargs[@]+"${cargs[@]}"} --criterion "$n" 2>/dev/null </dev/null | head -n1)"
     case "$line" in
       "criterion $n: pass"*) ;;
       "criterion $n: fail exit=124 timeout"*) finish escalate timeout ;;
       *) finish fail "criterion-$n" "$line" ;;
     esac
   done < <(printf '%s\n' "$CK_PACKET" | sed -n 's/^criterion \([0-9]*\): deferred long.*/\1/p')
-  if [ -z "$contract" ]; then
+  if [ -n "$contract" ]; then
+    printf '%s\n' "$CK_PACKET" | grep -qE '^criterion [0-9]+:' || finish escalate no-criteria
+  else
     cmd="$(jq -r '.testAndLintCommand // empty' "$state/persona-config.json" 2>/dev/null)"
     [ -n "$cmd" ] || finish escalate no-criteria
-    out="$(timeout 590 bash -c "$cmd" 2>&1)"; rc=$?
+    out="$(cd "$(git rev-parse --show-toplevel)" && timeout 590 bash -c "$cmd" 2>&1)"; rc=$?
     [ "$rc" -ne 124 ] || finish escalate timeout
     [ "$rc" -eq 0 ] || finish fail test-command "$(printf '%s\n' "$out" | tail -n 20)"
   fi
@@ -145,10 +151,11 @@ flag_cmd() {
   case "$reason" in *$'\n'*) usage ;; esac
   [ -n "$(printf '%s' "$reason" | tr -d '[:space:]')" ] || usage
   for f in "$state"/.pending-review.*; do
-    [ -f "$f" ] || continue
+    [ -f "$f" ] && [ ! -L "$f" ] || continue
     tmp="$(mktemp)"
-    { printf '%s: %s\n' "$kind" "$reason"; cat "$f"; } > "$tmp" && cat "$tmp" > "$f"
-    rm -f "$tmp"; n=$((n + 1))
+    { printf '%s: %s\n' "$kind" "$reason"; cat "$f"; } > "$tmp" \
+      && dd if="$tmp" of="$f" conv=notrunc,nocreat status=none 2>/dev/null && n=$((n + 1))
+    rm -f "$tmp"
   done
   echo "flag: $kind flags=$n"
   [ "$n" -gt 0 ]
