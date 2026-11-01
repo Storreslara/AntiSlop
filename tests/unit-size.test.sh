@@ -160,6 +160,14 @@ mkdir -p "$T/lonely/bin" && cp "$US" "$T/lonely/bin/unit-size.sh"
 mkdir -p "$T/lonely/hooks/scripts/lib" && cp "$ROOT/hooks/scripts/lib/sensitive-paths.sh" "$T/lonely/hooks/scripts/lib/" && : > "$T/lonely/hooks/scripts/lib/unit-scope.sh"
 [ "$(bash "$T/lonely/bin/unit-size.sh" u1 -- src/a.js)" = 'lane: full files=0 reason=unmeasurable' ] && ok "(j) library empty -> full" || bad "(j) library empty"
 
+# (rv-a) --at-least lifts the lane to the heavier of the measured lane and the floor.
+is "(rv-a1) small lifted to medium" 'lane: medium files=1 reason=at-least' ra1 --at-least medium -- src/a.js
+[ "$(cat "$BK/ra1.lane")" = 'lane: medium files=1 reason=at-least' ] && ok "(rv-a1) lifted lane recorded" || bad "(rv-a1) lane record"
+is "(rv-a2) a full lane stays full" 'lane: full files=1 reason=sensitive' ra2 --at-least medium -- hooks/x.sh
+is "(rv-a2) a medium lane is not lifted by a medium floor" 'lane: medium files=5 reason=paths' ra2 --at-least medium -- a.js b.js c.js d.js e.js
+bash "$US" ra3 --at-least huge -- src/a.js >/dev/null 2>&1; rc=$?
+[ "$rc" = 2 ] && [ ! -e "$BK/ra3.lane" ] && ok "(rv-a3) a bad floor exits 2, no file" || bad "(rv-a3) bad floor: rc=$rc"
+
 # (k) prose: the orchestrator routes on the lane, downgrade-only, medium lane without spec-master.
 flat() { tr -s ' \n' ' ' < "$1"; }
 for f in agents/orchestrator.md .claude/agents/orchestrator.md; do

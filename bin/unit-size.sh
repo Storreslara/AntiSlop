@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # unit-size.sh (st-u4): the lane for one unit, from its PLANNED scope, before any work is dispatched.
-# Usage: unit-size.sh <unit> --contract <path> | unit-size.sh <unit> -- <path>...
+# Usage: unit-size.sh <unit> [--at-least <medium|full>] --contract <path> | unit-size.sh <unit> [--at-least <medium|full>] -- <path>...
+# --at-least lifts the printed lane to the heavier of the measured lane and the floor (reason=at-least).
 # Prints `lane: <small|medium|full> files=<n> reason=<word>`, writes .claude/bookkeeping/<unit>.lane and
 # <unit>.scope, exit 0 (2 only on a bad unit id). Fails closed: anything it cannot measure is `full`.
 # The orchestrator may move a unit to a heavier lane than this prints, never to a lighter one.
 set -uo pipefail
-[ "$#" -ge 1 ] || { echo "usage: unit-size.sh <unit> (--contract <path> | -- <path>...)" >&2; exit 2; }
+[ "$#" -ge 1 ] || { echo "usage: unit-size.sh <unit> [--at-least <medium|full>] (--contract <path> | -- <path>...)" >&2; exit 2; }
 unit="$1"; shift
 [[ "$unit" =~ ^[A-Za-z0-9][A-Za-z0-9._#-]{0,63}$ ]] || { echo "unit-size: bad unit id: $unit" >&2; exit 2; }
+floor=""
+if [ "${1:-}" = --at-least ]; then
+  case "${2:-}" in medium|full) floor="$2"; shift 2 ;; *) echo "unit-size: --at-least takes medium or full" >&2; exit 2 ;; esac
+fi
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 top="$(git rev-parse --show-toplevel 2>/dev/null)" || top="$PWD"
 cd "$top" || exit 2
@@ -15,7 +20,9 @@ dot="${CLAUDE_PROJECT_DIR:-$top}/.claude"
 W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
 : > "$W/entries"
 emit() { # <lane> <n> <reason>
-  local line="lane: $1 files=$2 reason=$3"
+  local lane="$1" reason="$3" line
+  case "$floor:$lane" in medium:small) lane=medium; reason=at-least ;; full:small|full:medium) lane=full; reason=at-least ;; esac
+  line="lane: $lane files=$2 reason=$reason"
   mkdir -p "$dot/bookkeeping" && printf '%s\n' "$line" > "$dot/bookkeeping/$unit.lane" \
     && cp "$W/entries" "$dot/bookkeeping/$unit.scope"
   echo "$line"; exit 0
