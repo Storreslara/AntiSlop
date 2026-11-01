@@ -37,8 +37,8 @@ After this plan:
   After a `fail` or an `escalate`, the unit leaves the small lane: the orchestrator runs `unit-size.sh
   --at-least medium` before the next dispatch, so the fix gets the pending-review flag, the reviewer and the
   normal FAIL ladder. An `escalate` with no further writer work goes straight to the reviewer. The check
-  writes no marker (only the reviewer writes markers); it appends one RULING line to the ledger. See Open
-  Question 1.
+  writes no marker (only the reviewer writes markers); it appends one RULING line to the ledger. Resolved:
+  Open Question 1.
 - **D3 How the stop gate recognises a small-lane writer.** At the gated writer's dispatch,
   `dispatch-hygiene.sh` (the orchestrator's PreToolUse, which runs before the writer exists) appends to
   `.claude/reviewed/dispatch-lane.log` the line `<ts> tool_use_id=<tu> prompt=<sha256> unit=<id|none>
@@ -70,10 +70,10 @@ After this plan:
   without the script the old text stays. The Claude prose stops prescribing the redirect. The adapter
   protocol fragments (codex, cursor) are left as they are: the denial is specific to Claude Code.
 - **D7 Agent-teams mode is out of scope for the exemption.** `task-gate.sh` refuses to complete an `impl:`
-  task without a valid `.pass`, so in agent-teams mode every unit keeps its reviewer. See Open Question 2.
+  task without a valid `.pass`, so in agent-teams mode every unit keeps its reviewer. Resolved: Open Question 2.
 - **D8 Tracker issues of small units.** The scribe closes an issue only on a quoted reviewer PASS line. A
   small-lane unit's issue therefore stays open; the orchestrator puts it on its `open:` line together with
-  the check line. See Open Question 3.
+  the check line. Resolved: Open Question 3.
 - **D9 Order and release.** The tooling comes first, then the lane record, then the gate, then the prose
   (lane). The recommendation 3 work follows: gate, then route gate, then prose. The scribe unit comes next
   and the 0.33.0 release is last. Content units add an `[Unreleased]` CHANGELOG bullet and bump no version
@@ -101,7 +101,7 @@ has a targeted criterion with its own mutation.
 | 4 | rv-prose | 5 | full (agents/) | opus | [rv-prose](2026-11-01-reviewer-by-lane/contracts/rv-prose.md) |
 | 5 | rv-mainstop | 3 + 2 regenerated | full | sonnet | [rv-mainstop](2026-11-01-reviewer-by-lane/contracts/rv-mainstop.md) |
 | 6 | rv-routemark | 3 + 2 regenerated | full | opus | [rv-routemark](2026-11-01-reviewer-by-lane/contracts/rv-routemark.md) |
-| 7 | rv-flagprose | 5 | full (agents/) | sonnet | [rv-flagprose](2026-11-01-reviewer-by-lane/contracts/rv-flagprose.md) |
+| 7 | rv-flagprose | 5 (+1 if text moves) | full (agents/) | sonnet | [rv-flagprose](2026-11-01-reviewer-by-lane/contracts/rv-flagprose.md) |
 | 8 | rv-scribe | 3 | small | sonnet | [rv-scribe](2026-11-01-reviewer-by-lane/contracts/rv-scribe.md) |
 | 9 | rv-release | 3 | full (.claude-plugin/) | haiku | [rv-release](2026-11-01-reviewer-by-lane/contracts/rv-release.md) |
 
@@ -196,7 +196,8 @@ lead-programmer dispatch is still blocked and `hooks/scripts/stop-gate.sh` lets 
 ### 7. rv-flagprose: prose for the new channel
 
 Files: `agents/orchestrator.md`, `templates/persona-protocol.md`, `templates/protocol-digest.md`,
-`tests/stop-gate.test.sh`, `CHANGELOG.md`. In the orchestrator, the sentence "To end your turn during a
+`tests/stop-gate.test.sh`, `CHANGELOG.md`, and `docs/orchestrator-rationale.md` only if text must move to fit the
+byte caps (Risks, "Byte budget"). In the orchestrator, the sentence "To end your turn during a
 background review, write `defer: <reason>` into the flag." is replaced: a reviewer dispatch marks the
 flags `review-dispatched:`, so the turn may end, and any other defer or skip goes through
 `bash .claude/bin/unit-bookkeeping.sh flag defer|skip <reason>`. The protocol's escape-hatch paragraph and
@@ -244,21 +245,15 @@ below `## [Unreleased]`. Dispatch it after rv-scribe has passed.
 
 ## Open Questions
 
-1. **What happens after a small unit's check FAILs?** Recommended default: the unit moves to medium (D2),
-   so the fix gets the reviewer and the `.fail`-based ladder. Alternative (the default as first stated):
-   the unit stays small, the writer gets the failure lines, and the orchestrator counts check FAILs
-   in-session as the ladder's n.
-2. **Should small units skip the reviewer in agent-teams mode too?** Recommended default: no (D7). Doing it
-   would mean changing `task-gate.sh` to accept a small-lane record.
-3. **Should the scribe close a small unit's tracker issue?** Recommended default: no; the issue stays on
-   the `open:` line (D8). Alternative: `agents/scribe.md` also accepts the line
-   `unchecked-by-reviewer (small lane): precheck PASS`.
+None open. The user answered all three on 2026-11-01, each matching the recommended default:
+1. A failed (or escalated) small-unit check moves the unit to medium, so the fix gets the reviewer (D2).
+2. Agent-teams mode keeps the reviewer for small units; `task-gate.sh` is unchanged (D7).
+3. A small unit's tracker issue stays open on the `open:` line; `agents/scribe.md` is unchanged (D8).
 
 ## Dispatch
 
-Contracts written and committed so far: rv-tools, rv-lanerec, rv-stopgate (checkpoint 1). The links in
-the Units table for rv-prose, rv-mainstop, rv-routemark, rv-flagprose, rv-scribe and rv-release go to
-files a later spec-master spawn writes. Dispatch only from a contract file that exists.
+All nine contracts are written and committed; each Units-table link goes to its contract file. Dispatch in
+table order, one unit at a time, from the contract file only.
 
 ## Scribe update hint
 
