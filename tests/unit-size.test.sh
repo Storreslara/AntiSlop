@@ -186,5 +186,16 @@ for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
     flat "$ROOT/$f" | grep -qF -- "$n" && ok "(k) $f: $n" || bad "(k) $f missing: $n"
   done
   flat "$ROOT/$f" | grep -qF 'Planning a non-trivial change → two-stage' && bad "(k) $f keeps the unrouted line" || ok "(k) $f: old routing line gone"
+  # (rv-o) small-lane units skip the reviewer: the check, its report, the lane floor, the scribe's open: line.
+  for p in '(rv-o1)|bash .claude/bin/unit-bookkeeping.sh check <task-id> <baseline>' \
+           '(rv-o2)|report `unchecked-by-reviewer (small lane): precheck PASS`' \
+           '(rv-o4)|unit-size.sh <task-id> --at-least medium --contract <file>' \
+           '(rv-o5)|its issue stays open: put it and its `check:` line on your `open:` line'; do
+    flat "$ROOT/$f" | grep -qF -- "${p#*|}" && ok "${p%%|*} $f: ${p#*|}" || bad "${p%%|*} $f missing: ${p#*|}"
+  done
+  if flat "$ROOT/$f" | grep -qF 'Medium and full units always get their reviewer (if present); in agent-teams mode every unit does.' \
+     && ! flat "$ROOT/$f" | grep -qF 'Every unit in every lane gets its reviewer.'; then
+    ok "(rv-o3) $f: medium and full units get the reviewer, old sentence gone"
+  else bad "(rv-o3) $f: new reviewer sentence missing or old one kept"; fi
 done
 exit "$fail"

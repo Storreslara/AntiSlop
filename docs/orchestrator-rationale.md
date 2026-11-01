@@ -79,3 +79,7 @@ The harness gives no other signal: a cut-off turn's result is indistinguishable 
 ## N19: dispatch `model` precedence was measured (from "Per-unit model routing")
 
 An explicit dispatch `model` and a persona's frontmatter `model:` take precedence over `CLAUDE_CODE_SUBAGENT_MODEL` (measured on CLI 2.1.302, A/B pilot 4). A fix contract is never scored for the tier because it can score back onto `haiku`.
+
+## N20: why small-lane units skip the reviewer (from "Lane routing")
+
+User decision, 2026-11-01: the reviewer runs on medium and full units only. In the 2026-10-31 A/B, Arm B's reviewer ran 43 times and returned PASS 43 of 43; it cost $46.6, 37% of Arm B spend (about $1.08 and 88 s per dispatch), and changed no outcome. Its findings elsewhere were real (41 of 41 sampled defects), so it stays where the risk is. `unit-bookkeeping.sh check` replaces it on a small unit: a mechanical, fail-closed run of `review-precheck.sh` that prints `pass` only on positive evidence and writes no marker. The exemption is limited to subagent-orchestrator mode because in agent-teams mode `task-gate.sh` refuses to complete an `impl:` task without a valid `.pass`, which only the reviewer writes. A lane lift must be followed by a fresh `Agent` dispatch because `dispatch-hygiene.sh` writes the dispatch-lane record only at an `Agent` dispatch; a `SendMessage` resume keeps the old `small` record, so the stop gate would write no pending-review flag for the fix. Plan: `docs/plans/2026-11-01-reviewer-by-lane.md`.
