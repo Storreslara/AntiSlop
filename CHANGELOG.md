@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **Small-lane tooling (rv-tools).** `bin/unit-size.sh` takes `--at-least <medium|full>` and records the heavier of the measured lane and the floor (`reason=at-least`). `bin/unit-bookkeeping.sh check <unit> <baseline> [--contract <path>]` runs the mechanical small-lane check C1-C8 that replaces the reviewer on a small unit, and `flag <defer|skip> <reason>` writes the first line of every existing pending-review flag without a Bash redirect into `.claude/`.
+
 ## [0.32.0] - 2026-10-30
 
 **Release 0.32.0: the lean pipeline (plan 2026-10-30-lean-pipeline, lp-release).** The `task-master` persona is gone: spec-master writes one five-field contract per unit, the orchestrator writes fix contracts, and `task-master` in `--personas` or `personaSelection` maps to spec-master with a deprecation note. spec-master output is capped at 25,600 bytes and 400 lines per plan and 3,072 bytes per contract. The ESCALATE-TO-HUMAN verdict, its marker, packet, card and dashboard decision code, and `human-decision-gate.sh` are removed; the reviewer adds a `needs-human:` note instead, and `humanReviewMode` is ignored. `harness-integrity-gate.sh` and `reviewed-path-gate.sh` no longer scan Bash command text, and a writer whose dispatch left a new review marker is blocked at its stop. The stop gate checks one pending-review flag, and review-join stamps are gone. The writer packet, the reviewer verdict and the orchestrator's final message are shorter, the reviewer runs the full suite once per unit, and the version is bumped once per release (ADR-0044). Projects running `--update` receive content changes at releases only.
