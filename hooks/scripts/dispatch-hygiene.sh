@@ -151,6 +151,22 @@ if [ -n "$bl_target" ] && [[ $bl_tu =~ ^[A-Za-z0-9_]{1,128}$ ]] \
     { mkdir -p "${project_dir}/.claude/reviewed" \
       && printf '%s tool_use_id=%s head=%s prompt=%s target=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         "$bl_tu" "$bl_head" "$bl_ph" "$bl_target" >> "${project_dir}/.claude/reviewed/dispatch-baseline.log"; } 2>/dev/null || true
+    # Lane record: unit from the first non-blank line, lane from .fail or the bookkeeping lane file.
+    bl_unit=none; bl_lane=none; bl_first=""
+    while IFS= read -r bl_line; do
+      if [ -n "${bl_line//[[:space:]]/}" ]; then bl_first="$bl_line"; break; fi
+    done <<< "$prompt"
+    if [[ $bl_first =~ ^Unit:[[:space:]]+([A-Za-z0-9][${UNIT_ID_CHARCLASS}]{0,63})[[:space:]]*$ ]]; then
+      bl_unit="${BASH_REMATCH[1]}"
+      if [ -e "${project_dir}/.claude/reviewed/${bl_unit}.fail" ]; then
+        bl_lane=full
+      else
+        bl_w="$(sed -n '1s/^lane: \([a-z]*\)\([^a-z].*\)\{0,1\}$/\1/p' "${project_dir}/.claude/bookkeeping/${bl_unit}.lane" 2>/dev/null || true)"
+        case "$bl_w" in small|medium|full) bl_lane="$bl_w" ;; esac
+      fi
+    fi
+    { printf '%s tool_use_id=%s prompt=%s unit=%s lane=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        "$bl_tu" "$bl_ph" "$bl_unit" "$bl_lane" >> "${project_dir}/.claude/reviewed/dispatch-lane.log"; } 2>/dev/null || true
   fi
 fi
 # Writer-dispatch stamp: stop-gate.sh blocks a gated writer's stop when a verdict marker is newer.

@@ -1110,4 +1110,65 @@ else
   bad "T50 expected stamp only after the lead-programmer dispatch (rc_ex=$rc_ex stamp_ex=$stamp_ex rc=$rc)"
 fi
 
+# rv-l - dispatch-lane.log record beside the dispatch-baseline record.
+lane_payload() {
+  # $1 = subagent_type, $2 = prompt, $3 = tool_use_id
+  jq -n --arg s "$1" --arg p "$2" --arg t "$3" \
+    '{tool_name:"Agent",tool_use_id:$t,tool_input:{subagent_type:$s,prompt:$p}}'
+}
+lane_of() { awk -v t="tool_use_id=$2" '$2==t{print $5; exit}' "$1/.claude/reviewed/dispatch-lane.log" 2>/dev/null; }
+
+dir="$(make_project rvl1 '{"mode":"warn"}')"
+mkdir -p "$dir/.claude/bookkeeping"
+printf 'lane: medium files=3 reason=x\n' > "$dir/.claude/bookkeeping/u-a.lane"
+run "$dir" "$(lane_payload lead-programmer $'Unit: u-a\n\nbody' toolu_a)"
+l1="$(grep 'tool_use_id=toolu_a ' "$dir/.claude/reviewed/dispatch-lane.log" 2>/dev/null || true)"
+if [ "$rc" = 0 ] && [[ $l1 =~ ^[0-9T:Z-]+\ tool_use_id=toolu_a\ prompt=[0-9a-f]{64}\ unit=u-a\ lane=medium$ ]]; then
+  ok "(rv-l1) lane word from the bookkeeping lane file is recorded"
+else
+  bad "(rv-l1) expected unit=u-a lane=medium (rc=$rc line=$l1)"
+fi
+
+printf 'lane: small files=1\n' > "$dir/.claude/bookkeeping/u-b.lane"
+: > "$dir/.claude/reviewed/u-b.fail"
+run "$dir" "$(lane_payload lead-programmer $'Unit: u-b\n' toolu_b)"
+if [ "$rc" = 0 ] && [ "$(lane_of "$dir" toolu_b)" = lane=full ]; then
+  ok "(rv-l2) an existing .fail overrides the lane file with full"
+else
+  bad "(rv-l2) expected lane=full (rc=$rc got=$(lane_of "$dir" toolu_b))"
+fi
+
+run "$dir" "$(lane_payload lead-programmer $'Unit: u-none\n' toolu_c)"
+run "$dir" "$(lane_payload lead-programmer 'no unit line here' toolu_d)"
+printf 'lane: huge files=1\n' > "$dir/.claude/bookkeeping/u-e.lane"
+run "$dir" "$(lane_payload lead-programmer $'Unit: u-e\n' toolu_e)"
+if [ "$(lane_of "$dir" toolu_c)" = lane=none ] && [ "$(lane_of "$dir" toolu_d)" = lane=none ] \
+  && [ "$(lane_of "$dir" toolu_e)" = lane=none ] \
+  && grep -q 'tool_use_id=toolu_d .* unit=none lane=none$' "$dir/.claude/reviewed/dispatch-lane.log"; then
+  ok "(rv-l3) missing file, no Unit line and an unknown word give none"
+else
+  bad "(rv-l3) expected lane=none for missing file, no unit, unknown word"
+fi
+
+bl="$(grep 'tool_use_id=toolu_a ' "$dir/.claude/reviewed/dispatch-baseline.log" 2>/dev/null || true)"
+if [[ $bl =~ ^[0-9T:Z-]+\ tool_use_id=toolu_a\ head=([0-9a-f]{40}|none)\ prompt=[0-9a-f]{64}\ target=lead-programmer$ ]]; then
+  ok "(rv-l4) the dispatch-baseline line format is unchanged"
+else
+  bad "(rv-l4) baseline line changed: $bl"
+fi
+
+dir="$(make_project rvl5 '{"mode":"warn"}')"
+run "$dir" "$(lane_payload explorer $'Unit: u-a\n' toolu_f)"
+mkdir -p "$dir/.claude/bookkeeping"; ln -s /nonexistent/x "$dir/.claude/bookkeeping/u-g.lane"
+run "$dir" "$(lane_payload lead-programmer $'Unit: u-g\n' toolu_g)"
+if [ ! -e "$dir/.claude/reviewed/dispatch-lane.log" ] || ! grep -q toolu_f "$dir/.claude/reviewed/dispatch-lane.log"; then
+  if [ "$rc" = 0 ] && [ "$(lane_of "$dir" toolu_g)" = lane=none ]; then
+    ok "(rv-l5) a non-writer leaves no record and an unreadable lane file never blocks"
+  else
+    bad "(rv-l5) unreadable lane file: rc=$rc got=$(lane_of "$dir" toolu_g)"
+  fi
+else
+  bad "(rv-l5) explorer dispatch was recorded"
+fi
+
 exit "$fail"
