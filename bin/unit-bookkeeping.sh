@@ -106,9 +106,10 @@ finish() {
 # C1-C2c: lane, fail record, clean tree, baseline is an ancestor, range changes something.
 check_tree() {
   local st rc
+  CK_TOP="$(git rev-parse --show-toplevel 2>/dev/null)" || finish fail uncommitted
   [ "$(sed -n '1s/^lane: \([a-z]*\) .*/\1/p' "$bk/$CK_UNIT.lane" 2>/dev/null)" = small ] || finish escalate not-small
   [ ! -e "$state/reviewed/$CK_UNIT.fail" ] || finish escalate fail-record
-  st="$(git -C "$(git rev-parse --show-toplevel)" status --porcelain --untracked-files=all -- . ':(exclude).claude/agent-memory' 2>/dev/null)"; rc=$?
+  st="$(git -C "$CK_TOP" status --porcelain --untracked-files=all -- . ':(exclude).claude/agent-memory' 2>/dev/null)"; rc=$?
   [ "$rc" -eq 0 ] && [ -z "$st" ] || finish fail uncommitted
   git merge-base --is-ancestor "$CK_BASE" HEAD 2>/dev/null || finish escalate bad-baseline
   git diff --quiet "$CK_BASE" HEAD 2>/dev/null; [ "$?" -eq 1 ] || finish escalate empty-range
@@ -134,29 +135,36 @@ check_packet() {
   [ "$jd" = 0 ] || finish escalate judge
 }
 
-# C6: re-run every deferred criterion; the deferred lines must match the packet's count.
+# C6: re-run every deferred criterion; the deferred lines and the re-runs must match the packet's count.
 check_deferred() {
-  local pc="$1" n line re cnt; shift
+  local pc="$1" n line re cnt i=0; shift
   cnt="$(printf '%s\n' "$CK_PACKET" | grep -cE '^criterion [0-9]+: deferred long$')"
   [ "$cnt" = "$CK_DEF" ] || finish escalate precheck-error
   while read -r n; do
+    i=$((i + 1))
     line="$(bash "$pc" "$CK_UNIT" "$CK_BASE" "$@" --criterion "$n" 2>/dev/null </dev/null | head -n1)"
     re="^criterion $n: pass exit=[0-9]+\$"
     if [[ "$line" =~ $re ]]; then continue; fi
     case "$line" in "criterion $n: fail exit=124 timeout"*) finish escalate timeout ;; esac
     finish fail "criterion-$n" "$line"
   done < <(printf '%s\n' "$CK_PACKET" | sed -n 's/^criterion \([0-9]*\): deferred long$/\1/p')
+  [ "$i" = "$cnt" ] || finish escalate precheck-error
 }
 
-# C7 with a contract: the packet's criteria are exactly the numbers the contract declares.
+# C7 with a contract: the packet's criteria are exactly the numbers the contract declares. A contract
+# where us_section could read the criteria differently (a second heading, a fence) escalates instead.
 check_declared() {
-  local contract="$1" bad got decl
+  local contract="$1" bad got sec decl
   bad="$(printf '%s\n' "$CK_PACKET" | grep '^criterion ' | grep -vE '^criterion [0-9]+: (pass exit=[0-9]+|deferred long)$')"
   [ -z "$bad" ] || finish escalate precheck-error
   got="$(printf '%s\n' "$CK_PACKET" | sed -n 's/^criterion \([0-9][0-9]*\):.*/\1/p' | sort -n)"
   [ -n "$got" ] || finish escalate no-criteria
+  case "$contract" in /*) ;; *) contract="$CK_TOP/$contract" ;; esac
   [ -r "$contract" ] || finish escalate criteria-mismatch
-  decl="$(sed -n '/^## Acceptance criteria/,/^## /{s/^\([0-9][0-9]*\)\. .*/\1/p;}' "$contract" | sort -n)"
+  [ "$(grep -c '^## Acceptance criteria' "$contract")" = 1 ] || finish escalate criteria-mismatch
+  sec="$(sed -n '/^## Acceptance criteria/,/^## /p' "$contract")" || finish escalate criteria-mismatch
+  ! printf '%s\n' "$sec" | grep -qE '^[[:space:]]*(~~~|```)' || finish escalate criteria-mismatch
+  decl="$(printf '%s\n' "$sec" | sed -n 's/^\([0-9][0-9]*\)\. .*/\1/p' | sort -n)"
   [ -n "$decl" ] && [ "$decl" = "$got" ] && [ "$decl" = "$(printf '%s\n' "$decl" | sort -nu)" ] || finish escalate criteria-mismatch
 }
 

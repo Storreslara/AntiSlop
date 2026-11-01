@@ -215,6 +215,10 @@ setup small "$PASSP" "$OKP" 'criterion 3: pass exit=0'; printf '## Acceptance cr
 is_ck "(rv-k7) declared 1,2 packet 1,3" 'check: escalate unit=uc reason=criteria-mismatch' --contract c.md
 setup small "$PASSP" "$OKP" "$OKP"; printf '## Acceptance criteria\n1. run: `true`\n1. run: `false` (Bash tool timeout 600000 ms)\n' > c.md
 is_ck "(rv-k10) duplicate declared number" 'check: escalate unit=uc reason=criteria-mismatch' --contract c.md
+for t in 'second heading|## Acceptance criteria\n' 'tilde fence|~~~\n## x\n~~~\n' 'backtick fence|```\n## x\n```\n' 'indented fence|  ~~~\n## x\n  ~~~\n'; do
+  setup small "$PASSP" "$OKP"; printf '## Acceptance criteria\n1. run: `true`\n'"${t#*|}" > c.md
+  is_ck "(rv-k11) ${t%%|*}" 'check: escalate unit=uc reason=criteria-mismatch' --contract c.md
+done
 setup small "$PASSP" 'criterion 1: fail exit=1 want=0'; is_ck "(rv-k8) fail line under fails=0" 'check: escalate unit=uc reason=precheck-error' --contract c.md
 setup small "${PASSP/deferred=0/deferred=2}" 'criterion 3: deferred long'; is_ck "(rv-k8) deferred count" 'check: escalate unit=uc reason=precheck-error' --contract c.md
 setup small "${PASSP/deferred=0/deferred=1}" 'criterion 3: deferred long'; echo 'criterion 3: pass' > "$T/stub/crit.3"
@@ -265,5 +269,10 @@ want "(rv-e6)" "$(EMPTY=1 e_run "$CRIT1" d6.txt)" 'check: escalate unit=ue reaso
 want "(rv-e7)" "$(DESC=1 e_run "$CRIT1" d7.txt)" 'check: escalate unit=ue reason=bad-baseline'
 want "(rv-e8)" "$(e_run "$CRIT1" docs/plans/p.md)" 'check: escalate unit=ue reason=empty-range'
 want "(rv-e9)" "$(e_run "$CRIT1"$'\n1. run: `false` (Bash tool timeout 600000 ms)\n   exit: 0\n   stdout: empty' d9.txt)" 'check: escalate unit=ue reason=criteria-mismatch'
+CRIT2=$'2. run: `true`\n   exit: 0\n   stdout: empty'; CRITF='2. run: false'
+want "(rv-e10) second heading" "$(e_run "$CRIT1"$'\n'"$CRITF"$'\n## Acceptance criteria\n'"$CRIT2" d10.txt)" 'check: escalate unit=ue reason=criteria-mismatch'
+want "(rv-e10) fenced heading" "$(e_run "$CRIT1"$'\n'"$CRITF"$'\n~~~\n## x\n~~~\n'"$CRIT2" d10f.txt)" 'check: escalate unit=ue reason=criteria-mismatch'
+mkdir -p sub && printf '## Acceptance criteria\n%s\n%s\n' "$CRIT1" "$CRIT2" > sub/c.md
+want "(rv-e10) contract path is read from the repo top" "$(POST='cd sub' e_run "$CRIT1"$'\n'"$CRITF"$'\n## Acceptance criteria\n'"$CRIT2" d10s.txt)" 'check: escalate unit=ue reason=criteria-mismatch'
 
 exit "$fail"
