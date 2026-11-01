@@ -108,7 +108,7 @@ commit. It gates the whole suite, has no
 | 4 | rv-prose | 5 | full (agents/) | opus | [rv-prose](2026-11-01-reviewer-by-lane/contracts/rv-prose.md) |
 | 5 | rv-mainstop | 3 + 2 regenerated | full | sonnet | [rv-mainstop](2026-11-01-reviewer-by-lane/contracts/rv-mainstop.md) |
 | 6 | rv-routemark | 3 + 2 regenerated | full | opus | [rv-routemark](2026-11-01-reviewer-by-lane/contracts/rv-routemark.md) |
-| 7 | rv-flagprose | 5 (+1 if text moves) | full (agents/) | sonnet | [rv-flagprose](2026-11-01-reviewer-by-lane/contracts/rv-flagprose.md) |
+| 7 | rv-flagprose | 6 | full (agents/) | sonnet | [rv-flagprose](2026-11-01-reviewer-by-lane/contracts/rv-flagprose.md) |
 | 8 | rv-scribe | 3 | small | sonnet | [rv-scribe](2026-11-01-reviewer-by-lane/contracts/rv-scribe.md) |
 | 9 | rv-release | 3 | full (.claude-plugin/) | haiku | [rv-release](2026-11-01-reviewer-by-lane/contracts/rv-release.md) |
 
@@ -177,41 +177,23 @@ outcome not marked `fail` escalates:
   `criteria-mismatch`; `(rv-e6)` an `--allow-empty` range and `(rv-e8)` one
   changing only `docs/plans/`: `empty-range`; `(rv-e7)` a descendant baseline: `bad-baseline`.
 
-### 2. rv-lanerec: dispatch-time lane snapshot
+### 2. rv-lanerec: dispatch-time lane snapshot (PASS)
 
-Files: `hooks/scripts/dispatch-hygiene.sh`, `tests/dispatch-hygiene.test.sh`, `CHANGELOG.md`.
-This unit implements D3's record. It goes in the existing dispatch-baseline block (same target, caller,
-tool_use_id and hash conditions; guarded the same way, so it never blocks and never changes a verdict),
-after the baseline append. The unit id comes from the same first-non-blank-line `Unit:` regex as H3. Tests
-`(rv-l1)`-`(rv-l5)`: small recorded; `.fail` forces full; no lane file gives `none`; no `Unit:` line gives
-`unit=none lane=none`; a non-orchestrator caller writes no record.
+It added D3's record to `dispatch-hygiene.sh`'s dispatch-baseline block (it never blocks); tests
+`(rv-l1)`-`(rv-l5)`.
 
-### 3. rv-stopgate: small-lane writer stop writes no flag
+### 3. rv-stopgate: small-lane writer stop writes no flag (PASS)
 
-Files: `hooks/scripts/stop-gate.sh`, `hooks/scripts/lib/stop-gate-core.sh`, `tests/stop-gate.test.sh`,
-`CHANGELOG.md`. The adapter cores are regenerated. This unit implements D3's lookup and rule-6 branch.
-The core's header comment gains `writer_lane` (optional) in its caller contract and in rule 6, and the
-core reads it as `${writer_lane:-}`. The strings that `tests/state-distinctions-manifest.test.sh` pins
-stay. Tests `(rv-s1)`-`(rv-s6)`: a small record writes no flag (rc 0); a small record with a marker newer
-than the stamp still blocks (D6); a medium record writes the flag; a hash mismatch writes the flag; no
-transcript writes the flag; under mode off the result is rc 0 and no flag.
+It added D3's lookup to `stop-gate.sh` and rule 6's no-flag branch (optional `writer_lane`) to the core;
+tests `(rv-s1)`-`(rv-s6)`.
 
-### 4. rv-prose: orchestrator and protocol route by lane
+### 4. rv-prose: orchestrator and protocol route by lane (PASS)
 
-Files: `agents/orchestrator.md`, `templates/persona-protocol.md`, `docs/orchestrator-rationale.md`,
-`tests/unit-size.test.sh`, `CHANGELOG.md`.
-- In the orchestrator, the small bullet gains the check: on ready-for-review, run
-  `bash .claude/bin/unit-bookkeeping.sh check <task-id> <baseline>` (adding `--contract` when one exists)
-  instead of the reviewer, with the outcomes from D2, and report
-  `unchecked-by-reviewer (small lane): precheck PASS`. Heavier moves use
-  `unit-size.sh <task-id> --at-least medium --contract <file>` (a bare `--at-least medium` with no
-  `--contract` or `--` prints `full ... reason=no-input` and empties `<unit>.scope`). The line "Every unit in every lane gets its reviewer." becomes
-  "Medium and full units always get their reviewer (if present); in agent-teams mode every unit does." The
-  scribe convention counts `check: pass` as done for a small unit and keeps its issue open (D8).
-- The protocol's "Review ownership" section states the small-lane unit exception. Its "Pending-review flag"
-  section states that the gate writes no flag for a writer whose `dispatch-lane.log` record is small.
-- The rationale gains an entry that cites the A/B figures.
-- Byte caps: source 16,384 or less, deployed 40,960 or less. Text may move to the rationale to fit.
+The small bullet runs `unit-bookkeeping.sh check` with D2's outcomes and the `unit-size.sh <task-id>
+--at-least medium --contract <file>` lift; "Medium and full units always get their reviewer (if present);
+in agent-teams mode every unit does."; the scribe convention follows D8; the protocol states the
+small-lane exception and the no-flag rule; N20 cites the A/B figures. PASS notes 3, 4 and 7 became unit
+7's finding.
 
 ### 5. rv-mainstop: `review-dispatched:` passes, block text names the script, small D6 trip flags
 
@@ -234,16 +216,39 @@ of the reviewer-target block, after the name check passes, and skipped under mod
 touched; a reviewer dispatch refused by the name check touches nothing; after marking, a gated
 lead-programmer dispatch is still blocked and `hooks/scripts/stop-gate.sh` lets a main Stop through.
 
-### 7. rv-flagprose: prose for the new channel
+### 7. rv-flagprose: prose for the new channel and the small-lane gaps
 
 Files: `agents/orchestrator.md`, `templates/persona-protocol.md`, `templates/protocol-digest.md`,
-`tests/stop-gate.test.sh`, `CHANGELOG.md`, and `docs/orchestrator-rationale.md` only if text must move to fit the
-byte caps (Risks, "Byte budget"). In the orchestrator, the sentence "To end your turn during a
-background review, write `defer: <reason>` into the flag." is replaced: a reviewer dispatch marks the
-flags `review-dispatched:`, so the turn may end, and any other defer or skip goes through
-`bash .claude/bin/unit-bookkeeping.sh flag defer|skip <reason>`. The protocol's escape-hatch paragraph and
-the digest line say the same. Sticky and abandon semantics do not change. Prose pins `(rv-p1)`-`(rv-p3)`
-go in `tests/stop-gate.test.sh`. The byte caps are those of unit 4.
+`tests/stop-gate.test.sh`, `CHANGELOG.md`, `docs/orchestrator-rationale.md`. Finding (2026-11-01, rv-prose
+PASS notes 3, 4, 7): orchestrator.md:105 still said to spawn the reviewer on every ready-for-review,
+against the small-lane rule; a small unit whose D6 trip left a flag (unit 5) had no prose route to the
+reviewer; the source had 2 bytes of headroom. Exact orchestrator text (old → new):
+- "To end your turn during a background review, write `defer: <reason>` into the flag." → "A reviewer
+  dispatch marks open flags `review-dispatched:`, so your turn may end; any other defer or skip is `bash
+  .claude/bin/unit-bookkeeping.sh flag defer|skip <reason>`."
+- "(2) spawn the reviewer (if present) with the" → "(2) spawn the reviewer (if present; a small unit
+  gets `check`, see "Lane routing") with the".
+- "A `fail`, an `escalate` or no `check:` line (not a pass) moves the unit to medium so its fix gets the
+  reviewer:" → "A pending-review flag left by its writer's stop (it overrides `check: pass`), a `fail`, an
+  `escalate` or no `check:` line (not a pass) moves the unit to medium so it gets the reviewer:". The
+  sentence's `unit-size.sh <task-id> --at-least medium --contract <file>` and "else to the reviewer" then
+  route a flagged unit to the reviewer.
+
+Cuts and moves (none is pinned by a test; measured: source 16,314 bytes, deployed 39,954, with all of the above):
+- Delete " (under `apply`, any digest that reports one)": the sentence before it says the same.
+- "Name this project's reviewer (if present) as follows:" → "Reviewer naming:".
+- Delete " A fresh session gets the same ladder, provided it is unchanged." and "; the script holds the
+  arithmetic" (the sentence ends at "up."); N19 gains "A fresh session gets the same ladder, provided it
+  is unchanged; `ladder-tier.sh` holds the arithmetic."
+- Delete " so its dispatch-lane record has the new lane" (ends "(N20)."); N20 gains "After a lift, the
+  writer dispatch is a fresh `Agent` call so its dispatch-lane record has the new lane."
+- Delete "an unnamed dispatch returns its result to you, and " (it reads "by default; a persona"); N4
+  gains "An unnamed dispatch returns its result to the orchestrator."
+
+The protocol's escape-hatch paragraph and the digest line name `unit-bookkeeping.sh flag`; sticky and
+abandon semantics do not change. Pins in `tests/stop-gate.test.sh`, each on the source and deployed copy:
+`(rv-p1)` orchestrator flag sentence, `(rv-p2)` protocol, `(rv-p3)` digest, `(rv-p4)` the step (2)
+qualifier, `(rv-p5)` the flag clause.
 
 ### 8. rv-scribe: ADR-0045 and glossary
 
@@ -298,7 +303,7 @@ below `## [Unreleased]`. Dispatch it after rv-scribe has passed.
   precheck; it is a test seam set from the caller's environment. (8) Accepted, not fixed: C2a misses a
   tracked file flagged `--skip-worktree` and edited after its commit (rv-harden2 roast note); like the
   reviewer's `git diff --quiet HEAD`, it needs a deliberate writer action.
-- **Byte budget.** Orchestrator headroom: 646 bytes; rv-prose/rv-flagprose may move text to the rationale.
+- **Byte budget.** After rv-prose the orchestrator source had 2 bytes of headroom; unit 7 lists its cuts.
 
 ## Open Questions
 
