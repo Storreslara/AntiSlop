@@ -8,6 +8,8 @@
 #    review_audit.
 #  - hook_event, normalized to "Stop" or "SubagentStop"; agent_type, the (sub)agent identity;
 #    raw_agent_id, unsanitized; main_agent_name, the main-agent identity on a "Stop".
+#  - writer_lane (optional, read as ${writer_lane:-}): the stopping writer's dispatch-lane record lane,
+#    set only on an exact record match; only the Claude entry script sets it.
 #  - block() and allow(): every decision ends in one of them, because the loop guard is per port.
 #
 # Rules, in order:
@@ -18,10 +20,11 @@
 #     "defer: <reason>". skip: is logged and deletes its flag; defer: is logged and keeps it.
 #  4) a stop by an agent not in gatedAgents (default lead-programmer) -> allow.
 #  5) a non-empty WIP sentinel -> log, delete, allow.
-#  6) a gated SubagentStop -> write the flag, then block, naming the file, when a *.pass, *.fail or
-#     *.blocked marker is newer than reviewed/.writer-dispatch-stamp (touched by dispatch-hygiene.sh
-#     at each gated dispatch; no stamp, no check). The flag comes first because the loop-guarded
-#     stop after a block is allowed without reaching this rule.
+#  6) a gated SubagentStop -> write the flag (when writer_lane is "small", write none and log
+#     "small-lane agent=<id> no-flag" to review-audit.log), then block, naming the file, when a
+#     *.pass, *.fail or *.blocked marker is newer than reviewed/.writer-dispatch-stamp (touched by
+#     dispatch-hygiene.sh at each gated dispatch; no stamp, no check; small lane included). The flag
+#     comes first because the loop-guarded stop after a block is allowed without reaching this rule.
 set -euo pipefail
 
 utc() { date -u +%Y-%m-%dT%H:%M:%SZ; }
@@ -91,7 +94,11 @@ fi
 
 [ "$hook_event" = "SubagentStop" ] || allow
 
-state_write_pending_review "$agent_id" "$(printf '%s agent=%s' "$(utc)" "$agent_id")"
+if [ "${writer_lane:-}" = "small" ]; then
+  state_append_audit_log "review-audit.log" "$(utc) small-lane agent=${agent_id} no-flag"
+else
+  state_write_pending_review "$agent_id" "$(printf '%s agent=%s' "$(utc)" "$agent_id")"
+fi
 stamp="${dot}/reviewed/.writer-dispatch-stamp"
 if [ -f "$stamp" ]; then
   for marker in "${dot}"/reviewed/*.pass "${dot}"/reviewed/*.fail "${dot}"/reviewed/*.blocked; do
