@@ -129,9 +129,12 @@ cat "$S/packet"; exit "$(cat "$S/rc" 2>/dev/null || echo 0)"
 STUB
 PASSP='precheck: result=pass unit=uc range=a..b fails=0 deferred=0 judge=0'
 mkdir -p "$HDR" "$T/repo/.claude/reviewed"
-setup() { # <lane> <first packet line> [more packet lines]
+printf '.claude/*\n!.claude/agent-memory/\nc.md\nignored.txt\n' > .gitignore && git add .gitignore && g commit -q -m 'chore: ignore'
+SZ='size: files=1 lines=1 binary=0'
+setup() { # <lane> <first packet line> [more packet lines]; $SZ is the size line, c.md declares the packet's criteria
   printf 'lane: %s files=1 reason=paths\n' "$1" > "$HDR/uc.lane"
-  shift; printf '%s\n' "$@" > "$T/stub/packet"; echo 0 > "$T/stub/rc"
+  { printf '%s\n' "$2"; [ -z "$SZ" ] || printf '%s\n' "$SZ"; shift 2; [ "$#" -eq 0 ] || printf '%s\n' "$@"; } > "$T/stub/packet"; echo 0 > "$T/stub/rc"
+  { printf '## Affected files\n- `a.txt`\n\n## Acceptance criteria\n'; sed -n 's/^criterion \([0-9]*\):.*/\1. run: `true`/p' "$T/stub/packet"; } > c.md
   rm -f "$T/repo/.claude/reviewed/uc.fail" "$T/repo/.claude/persona-config.json"
 }
 ck() { UB_PRECHECK="$T/stub/pre" bash "$UB" check uc "$BASE" "$@" | head -n1; }
@@ -177,12 +180,43 @@ while [ "$#" -gt 0 ]; do
 done
 cat "$S/packet"
 STUB
-setup small "$PASSP" 'criterion 1: deferred long' 'criterion 2: deferred long'
+setup small "${PASSP/deferred=0/deferred=2}" 'criterion 1: deferred long' 'criterion 2: deferred long'
 echo 'criterion 1: pass exit=0' > "$T/stub/crit.1"; echo 'criterion 2: fail exit=1 want=0' > "$T/stub/crit.2"
 [ "$(UB_PRECHECK="$T/stub/pre2" bash "$UB" check uc "$BASE" --contract c.md < /dev/zero 2>&1 | head -n1)" = 'check: fail unit=uc reason=criterion-2' ] && ok "(rv-h6) precheck stdin is /dev/null" || bad "(rv-h6)"
 mkdir -p sub; setup small "$PASSP"; echo '{"testAndLintCommand":"test -f a.txt"}' > "$T/repo/.claude/persona-config.json"
 [ "$(cd sub && UB_PRECHECK="$T/stub/pre" bash "$UB" check uc "$BASE" | head -n1)" = 'check: pass unit=uc reason=precheck' ] && ok "(rv-h7) command runs from the repo top" || bad "(rv-h7)"
 rm -rf sub "$T/repo/.claude/persona-config.json"
+
+# rv-harden2: C2a-C2c, C3-C5 shape, C6 count and exit=, C7 declared numbers.
+is_ckb() { # <label> <want> <baseline> [check args]
+  local label="$1" want="$2" b="$3" got; shift 3
+  got="$(UB_PRECHECK="$T/stub/pre" bash "$UB" check uc "$b" "$@" | head -n1)"
+  [ "$got" = "$want" ] && ok "$label $want" || bad "$label: want '$want', got '$got'"
+}
+OKP='criterion 1: pass exit=0'
+setup small "$PASSP" "$OKP"; echo z > untracked.txt; is_ck "(rv-k1)" 'check: fail unit=uc reason=uncommitted' --contract c.md; rm untracked.txt
+setup small "$PASSP" "$OKP"; echo z > ignored.txt; mkdir -p .claude/agent-memory; echo n > .claude/agent-memory/n.md
+is_ck "(rv-k2)" 'check: pass unit=uc reason=precheck' --contract c.md; rm -rf ignored.txt .claude/agent-memory
+H0="$(git rev-parse HEAD)"; g commit -q --allow-empty -m later; D1="$(git rev-parse HEAD)"; git checkout -q "$H0"
+setup small "$PASSP" "$OKP"; is_ckb "(rv-k3)" 'check: escalate unit=uc reason=bad-baseline' "$D1" --contract c.md
+git checkout -q -
+B1="$(git rev-parse HEAD)"; echo q > q.txt; git add q.txt; g commit -q -m q; g revert --no-edit HEAD >/dev/null
+setup small "$PASSP" "$OKP"; is_ckb "(rv-k4) commit and revert" 'check: escalate unit=uc reason=empty-range' "$B1" --contract c.md
+SZ='size: files=0 lines=0 binary=0'; setup small "$PASSP" "$OKP"; is_ck "(rv-k4) size files=0" 'check: escalate unit=uc reason=empty-range' --contract c.md
+SZ=''; setup small "$PASSP" "$OKP"; is_ck "(rv-k5) no size line" 'check: escalate unit=uc reason=precheck-error' --contract c.md
+SZ='size: files=1 lines=1 binary=0'
+setup small "$PASSP judge=5" "$OKP"; is_ck "(rv-k5) judge twice" 'check: escalate unit=uc reason=precheck-error' --contract c.md
+setup small "${PASSP/fails=0/fails=3}" "$OKP"; is_ck "(rv-k5) pass with fails=3" 'check: escalate unit=uc reason=precheck-error' --contract c.md
+setup small "${PASSP/unit=uc/unit=other}" "$OKP"; is_ck "(rv-k5) other unit" 'check: escalate unit=uc reason=precheck-error' --contract c.md
+setup small "${PASSP/judge=0/judge=99999999999999999999}" "$OKP"; is_ck "(rv-k6)" 'check: escalate unit=uc reason=judge' --contract c.md
+setup small "$PASSP" "$OKP"; printf '## Acceptance criteria\n1. run: `true`\n2. run: `true`\n' > c.md
+is_ck "(rv-k7) declared 1,2 packet 1" 'check: escalate unit=uc reason=criteria-mismatch' --contract c.md
+setup small "$PASSP" "$OKP" 'criterion 3: pass exit=0'; printf '## Acceptance criteria\n1. run: `true`\n2. run: `true`\n' > c.md
+is_ck "(rv-k7) declared 1,2 packet 1,3" 'check: escalate unit=uc reason=criteria-mismatch' --contract c.md
+setup small "$PASSP" 'criterion 1: fail exit=1 want=0'; is_ck "(rv-k8) fail line under fails=0" 'check: escalate unit=uc reason=precheck-error' --contract c.md
+setup small "${PASSP/deferred=0/deferred=2}" 'criterion 3: deferred long'; is_ck "(rv-k8) deferred count" 'check: escalate unit=uc reason=precheck-error' --contract c.md
+setup small "${PASSP/deferred=0/deferred=1}" 'criterion 3: deferred long'; echo 'criterion 3: pass' > "$T/stub/crit.3"
+is_ck "(rv-k9)" 'check: fail unit=uc reason=criterion-3' --contract c.md
 
 P1="$T/repo/.claude/.pending-review.a1"; P2="$T/repo/.claude/.pending-review.a2"
 printf 'pending a1\n' > "$P1"; printf 'pending a2\n' > "$P2"
@@ -205,17 +239,28 @@ o="$(PATH="$T/shim:$PATH" bash "$UB" flag defer 'race')"; rc=$?
 
 # rv-harden end to end: the real precheck in a scratch repo whose contract is committed at the baseline.
 E="$T/e2e"; mkdir -p "$E" && cd "$E" || exit 1
-git init -q . && mkdir -p .claude/bookkeeping hooks
+git init -q . && mkdir -p .claude/bookkeeping hooks docs/plans && echo '.claude/' > .gitignore
+# env: POST runs after the work commit (untracked files); EMPTY=1 makes the work commit empty; DESC=1 passes a descendant baseline
 e_run() { # <criteria block> <listed file>
   printf '## Affected files\n- `%s`\n\n## Acceptance criteria\n%s\n' "$2" "$1" > c.md
-  git add -A . && g commit -q -m base && local b; b="$(git rev-parse HEAD)"
-  echo x > "$2" && git add -A . && g commit -q -m work
+  git add -A . && g commit -q -m base && local b w out; b="$(git rev-parse HEAD)"
+  if [ -n "${EMPTY:-}" ]; then g commit -q --allow-empty -m work; else echo x > "$2" && git add -A . && g commit -q -m work; fi
   echo 'lane: small files=1 reason=paths' > .claude/bookkeeping/ue.lane
-  CLAUDE_PROJECT_DIR="$E" bash "$UB" check ue "$b" --contract c.md | head -n1
+  [ -z "${POST:-}" ] || eval "$POST"
+  if [ -n "${DESC:-}" ]; then w="$(git rev-parse HEAD)"; git checkout -q "$b"; b="$w"; fi
+  out="$(CLAUDE_PROJECT_DIR="$E" bash "$UB" check ue "$b" --contract c.md | head -n1)"
+  [ -z "${DESC:-}" ] || git checkout -q -
+  rm -f n.txt; echo "$out"
 }
 want() { [ "$2" = "$3" ] && ok "$1 $3" || bad "$1: want '$3', got '$2'"; }
 want "(rv-e1)" "$(e_run $'1. run: `true`\n   exit: 0\n   stdout: empty' a.txt)" 'check: pass unit=ue reason=precheck'
 want "(rv-e2)" "$(e_run 'none' b.txt)" 'check: escalate unit=ue reason=no-criteria'
 want "(rv-e3)" "$(e_run $'1. run: `true`\n   exit: 0' hooks/x.sh)" 'check: escalate unit=ue reason=sensitive'
+CRIT1=$'1. run: `true`\n   exit: 0\n   stdout: empty'
+want "(rv-e4)" "$(POST='echo y > n.txt' e_run $'1. run: `test -f n.txt`\n   exit: 0\n   stdout: empty' d4.txt)" 'check: fail unit=ue reason=uncommitted'
+want "(rv-e5)" "$(e_run "$CRIT1"$'\n2. run: false' d5.txt)" 'check: escalate unit=ue reason=criteria-mismatch'
+want "(rv-e6)" "$(EMPTY=1 e_run "$CRIT1" d6.txt)" 'check: escalate unit=ue reason=empty-range'
+want "(rv-e7)" "$(DESC=1 e_run "$CRIT1" d7.txt)" 'check: escalate unit=ue reason=bad-baseline'
+want "(rv-e8)" "$(e_run "$CRIT1" docs/plans/p.md)" 'check: escalate unit=ue reason=empty-range'
 
 exit "$fail"
