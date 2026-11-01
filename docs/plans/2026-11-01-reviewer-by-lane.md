@@ -58,8 +58,8 @@ After this plan:
   touches the writer-dispatch stamp at every gated dispatch. The format of `dispatch-baseline.log` does not
   change (`tests/writer-scope-gate.test.sh` matches its lines exactly), which is why the lane goes in a
   separate log.
-- **D5 Main Stop while a reviewer runs (recommendation 3a).** When it allows a reviewer dispatch,
-  `reviewer-route-gate-core.sh` rewrites every flag whose first line starts with none of `defer: `,
+- **D5 Main Stop while a reviewer runs (recommendation 3a).** For a dispatch of the granted reviewer,
+  `reviewer-route-gate-core.sh` rewrites each flag whose first line starts with none of `defer: `,
   `skip: ` or `review-dispatched: ` so that its first line is `review-dispatched: <UTC ts>`, keeps the old
   content below it, and logs `<ts> review-dispatched flags=<n>`. Rule 3 of the stop gate allows a
   `review-dispatched:` flag, keeps it and logs nothing. The line contains no ` defer: `, so the self-report
