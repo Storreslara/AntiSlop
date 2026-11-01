@@ -246,6 +246,11 @@ listed and reports ready-for-review again; it never re-plans and never grades
 its own work. This ownership model relies on a one-unit-at-a-time invariant —
 only one unit is ever mid-review. Under `reviewGating.mode: off` the reviewer's
 verdict is advisory and nothing blocks on it.
+Small-lane exception (subagent-orchestrator mode only): a unit in the `small`
+lane gets no reviewer. The orchestrator runs `unit-bookkeeping.sh check`
+instead, and `check: pass` is done; a `fail`, an `escalate` or no `check:` line
+moves the unit to `medium`, so its fix gets the reviewer. In agent-teams mode
+every unit keeps its reviewer.
 
 ## Review markers and gate mechanics (owner-facing)
 Only one unit is ever mid-review: the route-gate blocks the next gated dispatch while any pending-review
@@ -313,7 +318,10 @@ In default (subagent-orchestrator) mode there is no `TaskCompleted` event, so
 `stop-gate.sh` carries its own mechanical backstop: whenever a gated agent
 (default `lead-programmer`) has a `SubagentStop` that is NOT honored by a WIP
 sentinel, it writes `.claude/.pending-review.<agent-id>` — a completed unit,
-no reviewer run yet. The reviewer's own `SubagentStop` deletes every
+no reviewer run yet. Exception: no flag is written (logged `small-lane
+agent=<id> no-flag`) when the writer's own record in
+`.claude/reviewed/dispatch-lane.log` says `lane=small` and the writer-dispatch
+marker check did not trip; any miss writes the flag. The reviewer's own `SubagentStop` deletes every
 pending-review flag (PASS or FAIL — a reviewer having run is what the flag
 tracks, not the verdict) and logs `cleared-by=reviewer` to `.claude/review-audit.log`.
 No per-unit stamp exists: a `Unit:` line on a reviewer dispatch is read by no hook.
