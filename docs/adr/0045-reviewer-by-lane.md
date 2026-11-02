@@ -25,6 +25,6 @@ In the A/B harness the reviewer ran 43 dispatches and returned PASS 43 of 43 tim
   - A forged `review-dispatched:` flag acts like an unlogged `defer:`; the route gate still blocks the next dispatch.
   - A parallel hook that denies the reviewer spawn after marking leaves the flags marked, the same exposure as a sticky `defer:`.
   - The per-unit lane file is gitignored and unprotected; the dispatch-lane record is written at dispatch time, before the writer exists, and the first record wins. A writer that rewrites its transcript `.meta.json` id could join a forged record.
-  - `--skip-worktree` files are missed by the dirty-tree test.
+  - `--skip-worktree` files are missed by the dirty-tree test; closed by ADR-0046 except the submodule case, closed by rs-check.
   - Marker audits may list small units as having no marker, and `dispatch-hygiene.sh` H3 cannot detect a re-dispatch of a finished small unit.
 - Known stale text left for a later unit: `hooks/scripts/lib/stop-gate-core.sh` (~line 48) still prescribes a `defer:` redirect, and the protocol's "overwrite a flag" is loose because `flag` prepends.

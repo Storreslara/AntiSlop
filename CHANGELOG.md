@@ -7,6 +7,7 @@
 - **A submodule escalates the small lane (rs-check).** `unit-bookkeeping.sh check` escalates with `reason=submodule` when `git ls-files -s` fails or lists a mode-160000 entry, so a submodule repo keeps the review. Pin `(rs-k1)` in `tests/unit-bookkeeping.test.sh`.
 - **Reviewer attribution by `roast-work` alone (rs-tokens).** `agg.py`, `agg2.py` and `cache.py` map a transcript whose only skill is `antislop:roast-work` to `reviewer`, since the reviewer preloads only that skill since l2-slim; the old pair stays. Pins `(rs-t1)` to `(rs-t3)` in `tests/token-usage.test.sh`, fixture `tests/fixtures/token-usage-roast/`.
 - **Reviewer gating header and `Mode: advisory` (rs-prose).** The reviewer rereads the key when the header says `off`, treats a `Mode: advisory` dispatch as advisory, and `spec-master.md` points its example at `appendix.md`; `persona-prose-pins` pins the phrases in both reviewer copies.
+- **Residual closures recorded in the ADRs, wiki and glossaries (rs-docs).** ADR-0045 and ADR-0046 mark each closed residual with its unit and record the four accepted D2 items; ADR-0046 wording is corrected, the wiki says the human-decision gate is a registered stub, line cites follow the code, and the **advisory dispatch** and **advisory review-join stamp** entries say no hook reads or writes them.
 
 ## [0.34.0] - 2026-11-02
 

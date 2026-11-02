@@ -70,7 +70,7 @@ Claude-Code-only by construction.
 
 ## Marker state machine (`.escalated`, `.directed`)
 
-Retired (0.32.0): the `ESCALATE-TO-HUMAN` verdict, the `.escalated` and `.directed` markers, the escalation packet and the human-decision gate are gone (ADR-0044); the reviewer has PASS, FAIL and INSUFFICIENT-CONTEXT, and a decision for the user goes back as a `needs-human:` note. A leftover `.escalated` file from an older version still makes `reviewed-path-gate.sh` refuse a no-reviewer main-session write (`hooks/scripts/reviewed-path-gate.sh:88-97`). The text below describes the retired design.
+Retired (0.32.0): the `ESCALATE-TO-HUMAN` verdict, the `.escalated` and `.directed` markers, the escalation packet and the human-decision gate are retired, the gate a registered stub (ADR-0044); the reviewer has PASS, FAIL and INSUFFICIENT-CONTEXT, and a decision for the user goes back as a `needs-human:` note. A leftover `.escalated` file from an older version still makes `reviewed-path-gate.sh` refuse a no-reviewer main-session write (`hooks/scripts/reviewed-path-gate.sh:88-97`). The text below describes the retired design.
 
 When a unit escalates under `humanReviewMode` (defaults to `critical`, on-by-default,
 shipped by unit #135; unit #138 documented it), the
