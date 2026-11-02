@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- **`--arms` option for the A/B runner (ab-arms).** `eval/abtest/run-matrix.sh --arms A|B|A,B` runs only the listed arms (default `A,B`, unchanged); runs of an unlisted arm are not planned, started or counted, and any other value exits 2.
 - **abtest-checks date assertion (ci-datefix).** `tests/abtest-checks.test.sh` accepts both `Z` and `+00:00` spellings of the fixed baseline commit date, which newer git prints as `Z`.
 
 ## [0.35.0] - 2026-11-03

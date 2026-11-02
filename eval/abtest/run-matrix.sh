@@ -2,10 +2,11 @@
 # Sequential, resumable runner for the AntiSlop-vs-bare-Fable comparison.
 # One headless claude at a time; every run appends one row to the results file.
 #
-# Usage: run-matrix.sh [--pilot | --reps N] [--evals a,b,...] [--policy uniform|shipped] [--dry-run]
+# Usage: run-matrix.sh [--pilot | --reps N] [--evals a,b,...] [--policy uniform|shipped] [--arms A|B|A,B] [--dry-run]
 #   --pilot     one rep per arm per eval (the smoke gate); its rows are valid rep-1 rows
 #   --reps N    reps per arm per eval (default 5)
 #   --evals     comma list of eval ids (default: the five E1-E5 ids)
+#   --arms      run only the listed arms (default A,B); runs of an unlisted arm are not planned or counted
 #   --dry-run   print the plan (run, skip or rerun (stale provenance) per run id) and exit; starts nothing
 #   --probe-isolation   run both arms once on a tiny task and print the isolation lines
 #   --probe-model uniform   same two runs, print the model line (give both flags to run once)
@@ -72,6 +73,7 @@ SECRETS_STATE="$WORK/.secrets-lock.manifest"
 POLICY="${ABTEST_POLICY:-uniform}"
 EVALS="e01-ambiguous-tax,e02-preview-mutation,e03-rename-query,e04-search-injection,e05-tags-feature"
 REPS=5
+ARMS=A,B
 DRY=0
 PROBE_ISO=0
 PROBE_MODEL=""
@@ -83,6 +85,7 @@ while [ $# -gt 0 ]; do
     --reps) REPS="${2:?--reps needs a number}"; shift ;;
     --evals) EVALS="${2:?--evals needs a list}"; shift ;;
     --policy) POLICY="${2:?--policy needs a value}"; shift ;;
+    --arms) ARMS="${2:?--arms needs a value}"; shift ;;
     --dry-run) DRY=1 ;;
     --probe-isolation) PROBE_ISO=1 ;;
     --probe-model) PROBE_MODEL="${2:?--probe-model needs a value}"; shift ;;
@@ -94,6 +97,7 @@ done
 case "$REPS" in '' | *[!0-9]* | 0) echo "run-matrix: --reps must be a positive number" >&2; exit 2 ;; esac
 case "$MAX_LIMIT_HITS" in '' | *[!0-9]* | 0) echo "run-matrix: ABT_MAX_LIMIT_HITS must be a positive number" >&2; exit 2 ;; esac
 case "$POLICY" in uniform | shipped) ;; *) echo "run-matrix: policy must be uniform or shipped" >&2; exit 2 ;; esac
+case "$ARMS" in A | B | A,B | B,A) ;; *) echo "run-matrix: --arms must be A, B or A,B" >&2; exit 2 ;; esac
 export ABTEST_POLICY="$POLICY"
 
 # current_prov ARM EV: three lines, the provenance a row written now would carry: the harness commit, the plugin
@@ -669,6 +673,7 @@ for ev in "${EV[@]}"; do
   for rep in $(seq 1 "$REPS"); do
     if [ $((rep % 2)) -eq 1 ]; then order="A B"; else order="B A"; fi
     for arm in $order; do
+      case ",$ARMS," in *",$arm,"*) ;; *) continue ;; esac
       run_id="$ev/$arm/$POLICY/$rep"
       done_run "$run_id" "$arm" "$ev"; st=$?
       if [ "$st" -eq 0 ]; then

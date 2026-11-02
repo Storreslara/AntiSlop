@@ -35,6 +35,16 @@ has "dry run plans arm B" "$out" "plan: $E/B/uniform/1 run"
 check "dry run starts nothing" "$(test -e "$T/flog" && echo ran || echo none)" "none"
 check "dry run creates no run or work directory" "$(test -e "$T/runs" || test -e "$T/work" && echo made || echo none)" "none"
 
+out="$(bash "$RUN" --arms B --pilot --evals $E --dry-run)"; rc=$?
+check "--arms B dry run exits 0" "$rc" "0"
+has "--arms B plans arm B" "$out" "plan: $E/B/uniform/1 run"
+check "--arms B plans no A run id" "$(printf '%s\n' "$out" | grep -c "/A/")" "0"
+check "--arms A,B plans both arms" "$(bash "$RUN" --arms A,B --pilot --evals $E --dry-run | grep -c '^plan:')" "2"
+check "the default plans both arms" "$(bash "$RUN" --pilot --evals $E --dry-run | grep -c '^plan:')" "2"
+out="$(bash "$RUN" --arms C --pilot --evals $E --dry-run 2>&1)"; rc=$?
+check "a bad --arms value exits 2" "$rc" "2"
+has "a bad --arms value says so" "$out" "run-matrix: --arms must be A, B or A,B"
+
 bash "$RUN" --pilot --evals $E > "$T/out1.txt"; rc=$?
 check "pilot exits 0" "$rc" "0"
 check "pilot appends A then B" "$(ids "$ABT_RESULTS")" "$E/A/uniform/1 $E/B/uniform/1"
