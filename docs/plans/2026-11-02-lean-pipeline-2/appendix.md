@@ -27,6 +27,7 @@
 - 2026-11-01 Functional scope & success criteria: Q Were the four rules the lp-orch cut deleted intended? → A: yes (user); dropped from the plan
 - 2026-11-01 Technical constraints & tradeoffs: Q One hardening unit or two? → A (self-resolved): two; (a) and (c) are both in `stop-gate-core.sh` rule 5-6 (l2-sg1), (b) is in `dispatch-hygiene.sh` (l2-sg2), so (a) and (b) do not share code
 - 2026-11-01 Terminology consistency: Q Is "small repo" a new term next to "unit lane"? → A (self-resolved): yes, a harness term for `docs/harness-glossary.md` (unit 15), distinct from the small lane
+- 2026-11-01 Edge cases / failure handling: Q What does the reviewer do when its precheck packet reads `br blast-radius: unavailable`? → A (self-resolved): the script counts as missing, so the existing explorer trigger applies (one added sentence in contract l2-revprose)
 
 ## Constitution check (.claude/constitution.md v1.2.0)
 - P1 "Verify, don't assume": satisfied. Item 2's premise was measured, not assumed; every unit has runnable criteria with mutation lines in its contract.
@@ -67,3 +68,9 @@ retirements and were not re-read one by one; an empty or partial sweep proves no
 ## Tracker
 Not published: this repo's plans are dispatched from contract files (publication is optional); each
 contract's Retrieval line points at the plan path.
+
+## Contract criteria verification (l2-prebr, l2-revprose, l2-orch; 2026-11-01)
+Each criterion ran through `bin/review-precheck.sh <unit> HEAD --contract <file> --criterion <n>` in a throwaway clone of 50483180 with the three contracts committed; every criterion parsed. The `validate.sh` criteria (deferred long) were not run.
+- At HEAD (before the work): l2-prebr 1, 2, 4 fail; 3 and 5 pass (3 is a guard: today the flag is itself a usage error). l2-revprose 1, 2, 4 fail; 3 and 5 pass (3 keeps the existing `(j)` pins). l2-orch 1, 2 (`0 4` then `0 4`), 3, 5 fail; 4 (source 16,384, deployed 40,032) and 6 pass.
+- With the work simulated in the clone: l2-orch's quoted edits plus an N21 section → 2, 3, 4 pass (source 16,340, deployed 39,988), `tests/unit-size.test.sh` exits 0. l2-revprose's edits rendered, with the Pending-review section removed from the deployed reviewer to stand in for l2-slim → 2, 3 pass, `tests/blast-radius.test.sh` has no FAIL. A minimal `--blast-radius` in `review-precheck.sh` → l2-prebr 2, 3 pass.
+- Byte sizes: l2-prebr 2,958; l2-revprose 3,067; l2-orch 2,852.
