@@ -43,7 +43,7 @@ re-derives it with a script: it runs `bash .claude/bin/blast-radius.sh <baseline
 itself and spawns the `explorer` only when the script prints
 `provenance=none`, the script is missing, or a question that decides a finding
 stays open; it never takes a blast radius from the dispatch, the orchestrator
-or the writer. It re-runs the checks with a script too: it runs
+or the writer. Its `review-precheck.sh --blast-radius` run counts. It re-runs the checks with a script too: it runs
 `.claude/bin/review-precheck.sh` itself, treats each failure line as a FAIL
 ground, and re-runs by hand only what the script defers or cannot decide.
 
@@ -248,8 +248,8 @@ only one unit is ever mid-review. Under `reviewGating.mode: off` the reviewer's
 verdict is advisory and nothing blocks on it.
 Small-lane exception (subagent-orchestrator mode only): a unit in the `small`
 lane gets no reviewer. The orchestrator runs `unit-bookkeeping.sh check`
-instead, and `check: pass` is done; a `fail`, an `escalate` or no `check:` line
-moves the unit to `medium`, so its fix gets the reviewer. In agent-teams mode
+instead, and `check: pass` is done; a pending-review flag left by its writer's stop, a `fail`, an `escalate` or no `check:` line
+moves the unit to `medium`, so it gets the reviewer. In agent-teams mode
 every unit keeps its reviewer.
 
 ## Review markers and gate mechanics (owner-facing)
@@ -329,12 +329,12 @@ While any flag exists: the main-session `Stop` hook blocks turn-end (exit 2,
 "a completed unit is awaiting review"), and `reviewer-route-gate.sh` blocks
 dispatching the next gated-agent unit (one unit mid-review at a time) — the orchestrator's correct next move
 (spawn the reviewer, or spawn anything non-gated like `explorer`) is never
-blocked. Escape hatch, mirroring the WIP sentinel: overwrite a flag that
-currently exists with `defer: <reason>`, written by `bash .claude/bin/unit-bookkeeping.sh flag defer <reason>` (never recreate a deleted one; logged, flag KEPT — this is **sticky**, not
+blocked. Escape hatch, mirroring the WIP sentinel: `bash .claude/bin/unit-bookkeeping.sh flag defer <reason>` puts
+`defer: <reason>` on the first line of each flag that currently exists and keeps the rest (never recreate a deleted one; logged, flag KEPT — this is **sticky**, not
 one-shot: it permits turn-end on every subsequent `Stop` until the reviewer's
 `SubagentStop` clears the flag or a `skip:` deletes it; the review is still
 owed the whole time) or `skip: <reason>` (`flag skip <reason>`; logged, flag DELETED, unit
-explicitly abandoned); a reason-less overwrite is rejected the same way an
+explicitly abandoned); a reason-less `flag` call is rejected the same way an
 empty WIP sentinel is. Sticky or not, `reviewer-route-gate.sh` continues to
 block the next gated-agent dispatch regardless of the defer — it blocks on
 the flag's existence, never its content.

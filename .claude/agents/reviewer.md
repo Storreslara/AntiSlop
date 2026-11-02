@@ -16,7 +16,7 @@ with reasons.
 
 - **Run the mechanical pre-review first**: run
   `bash .claude/bin/review-precheck.sh <task-id> <baseline> --contract <contract path>`
-  yourself, from the repo root, with a Bash timeout of 600000 ms (with no
+  yourself with `--blast-radius` appended, from the repo root, with a Bash timeout of 600000 ms (with no
   contract, pass each `## Affected files` path of the dispatch as
   `--affected <path>`; in a fix round add `--fix-contract <path>`). Line 1 reads
   `precheck: result=<pass|fail> ... fails=<n> deferred=<n> judge=<n>`. Each
@@ -33,7 +33,9 @@ with reasons.
 - **Scope the review with the blast-radius script**: run
   `bash .claude/bin/blast-radius.sh <baseline>` yourself, from the repo root,
   and never take a blast radius from the dispatch, the orchestrator or the
-  writer. It prints `blast-radius: provenance=<grep|none> files=<n>`, then
+  writer. Its `br ` lines
+  in the precheck packet you ran are this run; do not run the script again.
+  A `br blast-radius: unavailable` line means the script is missing. It prints `blast-radius: provenance=<grep|none> files=<n>`, then
   `changed:`, `test:` and `caller:` lines. Review exactly the changed files and
   the callers and tests it lists — not the whole repo, and not just the
   literal diff (a clean diff can still break a caller two hops away). A
@@ -76,7 +78,9 @@ with reasons.
   without both the version and the bare principle name attached; a FAIL
   verdict that names a constitution
   violation without this exact citation string is itself malformed and
-  needs correcting before you return it. SHOULD violations and
+  needs correcting before you return it. The dispatch header's `Constitution:`
+  line answers whether it exists; if the line is absent or doubtful, check the
+  file yourself. SHOULD violations and
   plan-recorded deviations go in the non-blocking notes list, never the
   verdict. The defect-list bullet reads, verbatim in shape:
 
@@ -89,7 +93,7 @@ with reasons.
   Run the unit's acceptance-criteria command plus the project's
   test/build/lint commands and read the actual exit codes/output. Run the full suite (`testAndLintCommand`) once,
   after the unit's final commit and never per fix commit (in this repository
-  that is `bash tests/validate.sh`). Verify the
+  that is `bash tests/validate.sh`). A deferred criterion that runs the full suite, run with `--criterion <n>`, is that one run. Do not inspect `.claude/bin`, `.claude/hooks` or `.claude/persona-config.json` for what the header states; if a header line is absent or wrong, check for yourself, never skip the check. Verify the
   reviewed state is committed before writing a marker — no tracked file outside
   `.claude/agent-memory/` carries an uncommitted change (see the On PASS
   bullet for the exact command and the one exception).
@@ -175,7 +179,7 @@ STATUS: complete
   `agents/*.md` or `templates/*`, you may invoke `antislop:version-stamp-discipline`
   for its runnable P3 check (`ok` clears the per-release rule: each bump has its CHANGELOG line and the version never decreases). It changes no verdict rules beyond the
   existing constitutional P3 check.
-- **When reviewGating.mode is off (review gating off)**: read the key with
+- **When reviewGating.mode is off (review gating off)**: read the dispatch header's `Review gating:` line first; only when it is absent, read the key with
   this one Bash command:
   `jq -r '.reviewGating.mode // "enforce"' .claude/persona-config.json`
   Only the exact string `off` counts; an absent key, a non-zero exit or any
@@ -389,7 +393,7 @@ re-derives it with a script: it runs `bash .claude/bin/blast-radius.sh <baseline
 itself and spawns the `explorer` only when the script prints
 `provenance=none`, the script is missing, or a question that decides a finding
 stays open; it never takes a blast radius from the dispatch, the orchestrator
-or the writer. It re-runs the checks with a script too: it runs
+or the writer. Its `review-precheck.sh --blast-radius` run counts. It re-runs the checks with a script too: it runs
 `.claude/bin/review-precheck.sh` itself, treats each failure line as a FAIL
 ground, and re-runs by hand only what the script defers or cannot decide.
 
@@ -547,8 +551,8 @@ only one unit is ever mid-review. Under `reviewGating.mode: off` the reviewer's
 verdict is advisory and nothing blocks on it.
 Small-lane exception (subagent-orchestrator mode only): a unit in the `small`
 lane gets no reviewer. The orchestrator runs `unit-bookkeeping.sh check`
-instead, and `check: pass` is done; a `fail`, an `escalate` or no `check:` line
-moves the unit to `medium`, so its fix gets the reviewer. In agent-teams mode
+instead, and `check: pass` is done; a pending-review flag left by its writer's stop, a `fail`, an `escalate` or no `check:` line
+moves the unit to `medium`, so it gets the reviewer. In agent-teams mode
 every unit keeps its reviewer.
 
 ## Review markers and gate mechanics (owner-facing)
