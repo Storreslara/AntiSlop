@@ -219,12 +219,23 @@ flag_cmd() {
 }
 
 repo_cmd() {
-  local top n l
-  top="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "repo: large files=0 lines=0"; return 0; }
-  n="$(cd "$top" && git ls-files -- . ':(exclude).claude' ':(exclude)docs/plans' | wc -l | tr -d ' ')"
-  l="$(cd "$top" && git ls-files -z -- . ':(exclude).claude' ':(exclude)docs/plans' | xargs -0 -r cat 2>/dev/null | wc -l | tr -d ' ')"
-  case "$n$l" in ''|*[!0-9]*) echo "repo: large files=0 lines=0"; return 0 ;; esac
-  if [ "$n" -le 10 ] || [ "$l" -lt 1000 ]; then echo "repo: small files=$n lines=$l"; else echo "repo: large files=$n lines=$l"; fi
+  local top list n=0 l=0 f c
+  list="$(mktemp)" || { echo "repo: large files=0 lines=0"; return 0; }
+  if top="$(git rev-parse --show-toplevel 2>/dev/null)" && cd "$top" \
+    && git ls-files -z -- . ':(exclude).claude' ':(exclude)docs/plans' > "$list" 2>/dev/null; then
+    while IFS= read -r -d '' f; do
+      c="$(wc -l < "$f" 2>/dev/null)" || { n=-1; break; }
+      case "$c" in ''|*[!0-9]*) n=-1; break ;; esac
+      n=$((n + 1)); l=$((l + c))
+    done < "$list"
+  else
+    n=-1
+  fi
+  rm -f "$list"
+  if [ "$n" -lt 0 ]; then echo "repo: large files=0 lines=0"
+  elif [ "$n" -le 10 ] || [ "$l" -lt 1000 ]; then echo "repo: small files=$n lines=$l"
+  else echo "repo: large files=$n lines=$l"; fi
+  return 0
 }
 
 case "${1:-}" in

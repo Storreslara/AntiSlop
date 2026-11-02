@@ -293,4 +293,9 @@ mkrepo 11a 11 200; want "(l2-b5) 11 files 2200 lines" "$(cd "$T/r11a" && bash "$
 mkrepo 11b 11 50; want "(l2-b5) 11 files 550 lines" "$(cd "$T/r11b" && bash "$UB" repo)" 'repo: small files=11 lines=550'
 mkdir -p "$T/nogit"; want "(l2-b6) outside git" "$(cd "$T/nogit" && GIT_CEILING_DIRECTORIES="$T" bash "$UB" repo)" 'repo: large files=0 lines=0'
 
+mkrepo 20 20 200
+( cd "$T/r20" && printf 'garbage' > .git/index ); want "(l2-b6) corrupt index" "$(cd "$T/r20" && bash "$UB" repo)" 'repo: large files=0 lines=0'
+mkrepo 20 20 200; NX="$T/noxargs"; mkdir -p "$NX"; for t in git bash cat wc mktemp rm dirname sed tr head date; do ln -sf "$(command -v $t)" "$NX/$t"; done
+want "(l2-b6) no xargs" "$(cd "$T/r20" && PATH="$NX" bash "$UB" repo | cut -d' ' -f1,2)" 'repo: large'
+mkrepo 12 12 5; rm "$T/r12/f3"; want "(l2-b6) deleted tracked file" "$(cd "$T/r12" && bash "$UB" repo)" 'repo: large files=0 lines=0'
 exit "$fail"
