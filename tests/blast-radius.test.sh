@@ -101,4 +101,25 @@ for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agent
   flat "$ROOT/$f" | grep -qF -- 'it runs `.claude/bin/blast-radius.sh' && bad "(j) $f keeps the form without bash" || ok "(j) $f: protocol names bash"
 done
 
+# (l2-v1..v6) reviewer routine uses the header lines and the precheck's br lines; (l2-v7..v9) protocol wording.
+for f in agents/reviewer.md .claude/agents/reviewer.md; do
+  i=1
+  for n in 'yourself with `--blast-radius` appended' \
+           'Its `br ` lines in the precheck packet you ran are this run; do not run the script again. A `br blast-radius: unavailable` line means the script is missing.' \
+           "The dispatch header's \`Constitution:\` line answers whether it exists" \
+           "read the dispatch header's \`Review gating:\` line first; only when it is absent, read the key with" \
+           'A deferred criterion that runs the full suite, run with `--criterion <n>`, is that one run.' \
+           'Do not inspect `.claude/bin`, `.claude/hooks` or `.claude/persona-config.json` for what the header states'; do
+    flat "$ROOT/$f" | grep -qF -- "$n" && ok "(l2-v$i) $f" || bad "(l2-v$i) $f missing: $n"
+    i=$((i+1))
+  done
+done
+for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agents/reviewer.md .claude/agents/orchestrator.md; do
+  flat "$ROOT/$f" | grep -qF -- 'Its `review-precheck.sh --blast-radius` run counts.' && ok "(l2-v7) $f" || bad "(l2-v7) $f missing the run-counts sentence"
+done
+for f in templates/persona-protocol.md .claude/persona-protocol.md; do
+  flat "$ROOT/$f" | grep -qF -- 'puts `defer: <reason>` on the first line of each flag that currently exists and keeps the rest' && ! flat "$ROOT/$f" | grep -qF 'overwrite a flag' && ok "(l2-v8) $f" || bad "(l2-v8) $f escape hatch"
+  flat "$ROOT/$f" | grep -qF -- "a pending-review flag left by its writer's stop, a \`fail\`, an \`escalate\` or no \`check:\` line moves the unit to \`medium\`, so it gets the reviewer" && ok "(l2-v9) $f" || bad "(l2-v9) $f small lane"
+done
+
 exit "$fail"
