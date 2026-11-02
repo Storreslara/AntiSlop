@@ -110,7 +110,7 @@ finish() {
   exit 0
 }
 
-# C1-C2c: lane, fail record, clean tree, no assume-unchanged or skip-worktree files, baseline is an ancestor, range changes something.
+# C1-C2c: lane, fail record, clean tree, no assume-unchanged or skip-worktree files, no submodule, baseline is an ancestor, range changes something.
 check_tree() {
   local st rc
   CK_TOP="$(git rev-parse --show-toplevel 2>/dev/null)" || finish fail uncommitted
@@ -120,6 +120,8 @@ check_tree() {
   [ "$rc" -eq 0 ] && [ -z "$st" ] || finish fail uncommitted
   st="$(git -C "$CK_TOP" ls-files -v 2>/dev/null)"; rc=$?
   [ "$rc" -eq 0 ] && ! printf '%s\n' "$st" | grep -qE '^([a-z]|S) ' || finish escalate index-flags
+  st="$(git -C "$CK_TOP" ls-files -s 2>/dev/null)"; rc=$?
+  [ "$rc" -eq 0 ] && ! printf '%s\n' "$st" | grep -q '^160000 ' || finish escalate submodule
   git merge-base --is-ancestor "$CK_BASE" HEAD 2>/dev/null || finish escalate bad-baseline
   git diff --quiet "$CK_BASE" HEAD 2>/dev/null; [ "$?" -eq 1 ] || finish escalate empty-range
 }

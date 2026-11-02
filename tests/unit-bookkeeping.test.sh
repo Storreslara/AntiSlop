@@ -283,6 +283,8 @@ git update-index --no-skip-worktree k1.txt
 want "(l2-k2) assume-unchanged" "$(POST='git update-index --assume-unchanged k1.txt' e_run "$CRIT1" k2b.txt)" 'check: escalate unit=ue reason=index-flags'
 git update-index --no-assume-unchanged k1.txt
 want "(l2-k3) cleared bits, x..md" "$(CPATH=x..md PRE='cp c.md x..md' e_run "$CRIT1" k3.txt)" 'check: pass unit=ue reason=precheck'
+want "(rs-k1) gitlink in HEAD" "$(POST='mkdir gl && git update-index --add --cacheinfo 160000,$(git rev-parse HEAD),gl && g commit -q -m gl' e_run "$CRIT1" k4.txt)" 'check: escalate unit=ue reason=submodule'
+git rm -q --cached gl && rmdir gl && g commit -q -m ungl
 
 # l2-bkhdr: review header gating and constitution lines, and the repo size subcommand.
 hdr() { (cd "$T/repo" && CLAUDE_PROJECT_DIR="$1" bash "$UB" review ub "$BASE" | grep -E '^(Review gating|Constitution):' | tr '\n' '|'); }

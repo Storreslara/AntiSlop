@@ -108,7 +108,7 @@
     ".claude/bin/contract-guard.js": "3fec76a495eea193a397c505a7d390d8856f06d3137c77ea43d0f6004da95061",
     ".claude/bin/contract-score.js": "a828a8c29cf555bcb9a29d13da3f0819c7e98b61542690e5541bfd1a464428d5",
     ".claude/bin/fail-count.sh": "1642e53eafa7bfb6757040fea78d57767350e9a7fbb8bcd5009561b4e39d88d4",
-    ".claude/bin/unit-bookkeeping.sh": "422592f8cdd7a9634831cfff647f032a0655a73f1d40714f34139d3d6ce9c028",
+    ".claude/bin/unit-bookkeeping.sh": "492659c31d655855848c40276eb0a49dcf28af3988e950000b4f73941da29e53",
     ".claude/bin/blast-radius.sh": "857f77e1e9c58cfdc00cec3cbf9ae1c6a436e00d0fc92c8a4decf2717ed9a070",
     ".claude/hooks/scripts/lib/sensitive-paths.sh": "9a81dd5435e02dfba6d99813a484d3959c955f4d4d0126d4ed5674dcfb68fe51",
     ".claude/hooks/scripts/lib/unit-scope.sh": "c70da8a3487ce48eace66a32bea3e68eb4df835eb1ab71a021c1e4a012a22ca7",
