@@ -60,5 +60,18 @@ check "agg2 main-session section: --since before the first usage record keeps it
 agg2m --until 2026-01-01T00:00:00Z | grep -q 'sessions=0'
 check "agg2 main-session section: --until at the first usage record drops it" "$?"
 
+rroot=tests/fixtures/token-usage-roast
+roast() { python3 -I scripts/token-usage/"$1" --root "$rroot" 36500; }
+only_reviewer() { grep -qE '^reviewer +(n= *)?1 ' && ! grep -q '^other'; }
+
+roast agg.py | only_reviewer
+check "(rs-t1) agg.py attributes a roast-work-only transcript to reviewer" "$?"
+
+roast agg2.py | only_reviewer
+check "(rs-t2) agg2.py attributes a roast-work-only transcript to reviewer" "$?"
+
+roast cache.py | only_reviewer
+check "(rs-t3) cache.py attributes a roast-work-only transcript to reviewer" "$?"
+
 echo "token-usage: $passed/$total passed"
 [ "$passed" -eq "$total" ]

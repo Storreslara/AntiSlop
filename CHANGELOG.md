@@ -5,6 +5,7 @@
 - **A signal never moves the writer-dispatch stamp (rs-stamp).** `dispatch-hygiene.sh` traps TERM, INT and HUP to clear the stamp-due flag and exit 143, 130 and 129, so the EXIT trap cannot touch `.writer-dispatch-stamp` after a signal. Pins `(rs-s1)` to `(rs-s3)` in `tests/dispatch-hygiene.test.sh`.
 - **Corelib comments and stop-gate message (rs-corelib).** `stop-gate-core.sh` says the stamp is touched at each allowed gated dispatch; the no-script wrong-namespace message tells the user to add a first line `defer:` or `skip:` to a flag; `state_replace_pending_review` documents its umask fallback. Pins `(l2-g2)` moved, `(rs-r1)` added in `tests/reviewer-route-gate-caller.test.sh`.
 - **A submodule escalates the small lane (rs-check).** `unit-bookkeeping.sh check` escalates with `reason=submodule` when `git ls-files -s` fails or lists a mode-160000 entry, so a submodule repo keeps the review. Pin `(rs-k1)` in `tests/unit-bookkeeping.test.sh`.
+- **Reviewer attribution by `roast-work` alone (rs-tokens).** `agg.py`, `agg2.py` and `cache.py` map a transcript whose only skill is `antislop:roast-work` to `reviewer`, since the reviewer preloads only that skill since l2-slim; the old pair stays. Pins `(rs-t1)` to `(rs-t3)` in `tests/token-usage.test.sh`, fixture `tests/fixtures/token-usage-roast/`.
 
 ## [0.34.0] - 2026-11-02
 

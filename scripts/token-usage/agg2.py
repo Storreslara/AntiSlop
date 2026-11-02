@@ -44,6 +44,7 @@ UNTIL = iso_epoch(ARGS.until) if ARGS.until else None
 cut = time.time() - DAYS * 86400
 files = [f for f in glob.glob(root + '/*/subagents/*.jsonl') if os.path.getmtime(f) > cut]
 SKILL_SIG = {
+    frozenset(['antislop:roast-work']): 'reviewer',
     frozenset(['antislop:roast-work', 'antislop:ubiquitous-language']): 'reviewer',
     frozenset(['antislop:coding-discipline', 'antislop:tdd']): 'lead-programmer',
     frozenset(['antislop:grilling', 'antislop:domain-modeling', 'antislop:ubiquitous-language']): 'spec-master',

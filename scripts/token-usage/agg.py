@@ -70,6 +70,7 @@ for pf in glob.glob(root + '/*.jsonl'):
         pass
 
 SKILL_SIG = {
+    frozenset(['antislop:roast-work']): 'reviewer',
     frozenset(['antislop:roast-work', 'antislop:ubiquitous-language']): 'reviewer',
     frozenset(['antislop:coding-discipline', 'antislop:tdd']): 'lead-programmer',
     frozenset(['antislop:grilling', 'antislop:domain-modeling', 'antislop:ubiquitous-language']): 'spec-master',
