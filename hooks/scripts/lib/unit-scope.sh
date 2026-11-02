@@ -19,10 +19,24 @@ us_section() {
 # us_entries <file> [<heading>]: every backtick-quoted token with no space that
 # contains a `/` or a `.` in the file's `## <heading>` section (default
 # `Affected files`), one per line. `Do NOT touch` is read by us_exclusions
-# instead: a token there may sit in a reason or a partial-file qualifier.
+# instead: a token there may sit in a reason or a partial-file qualifier. Each
+# token loses one trailing `:NN` or `:NN-NN`, then one flat `{a,b}` group (one
+# `{` before one `}`, at least two members, none empty) prints once per member;
+# any other brace form prints as is, so it matches nothing (fail closed).
 us_entries() {
   if [ "${2:-}" = "Do NOT touch" ]; then us_exclusions "$1"; return 0; fi
-  us_section "$1" "${2:-Affected files}" | grep -oE '`[^` ]+`' | tr -d '`' | grep -E '[/.]' || true
+  us_section "$1" "${2:-Affected files}" | grep -oE '`[^` ]+`' | tr -d '`' | grep -E '[/.]' | awk '
+    {
+      t = $0; sub(/:[0-9]+(-[0-9]+)?$/, "", t)
+      o = index(t, "{"); c = index(t, "}"); s = t; gsub(/[^{]/, "", s); no = length(s); s = t; gsub(/[^}]/, "", s)
+      if (no == 1 && length(s) == 1 && o < c) {
+        pre = substr(t, 1, o - 1); suf = substr(t, c + 1); n = split(substr(t, o + 1, c - o - 1), m, ",")
+        ok = (n >= 2); for (i = 1; i <= n; i++) if (m[i] == "") ok = 0
+        if (ok) { for (i = 1; i <= n; i++) print pre m[i] suf; next }
+      }
+      print t
+    }
+  ' || true
 }
 
 # us_exclusions <file>: the whole-file exclusions of the file's `## Do NOT touch`

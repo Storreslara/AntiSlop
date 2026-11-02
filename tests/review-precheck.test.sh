@@ -239,6 +239,18 @@ L="$(mktemp -d)"; mkdir -p "$L/bin" "$L/hooks/scripts/lib" && cp "$PC" "$L/bin/"
 rm -rf "$L"
 bash "$PC" u1 "$BASE" --contract "$C" --criterion 1 --blast-radius >/dev/null 2>&1; [ "$?" = 2 ] && ok "(l2-r4) --criterion with --blast-radius: exit 2" || bad "(l2-r4) not a usage error"
 
+# (l2-sc) an Affected files token may end in :NN or :NN-NN and may hold one flat {a,b} group.
+L2="$T/l2"; mkdir -p "$L2/src" && cd "$L2" && git init -q .
+printf '## Affected files\n- `src/x.sh:48`\n- `src/{a,b}.sh`\n- `src/{c,{d,e}}.sh`\n\n## Acceptance criteria\n' > c.md
+g add c.md && g commit -qm base && L2B="$(git rev-parse HEAD)"
+for f in x a b c d e; do echo 1 > "src/$f.sh"; done
+g add src && g commit -qm work
+l2out="$(CLAUDE_PROJECT_DIR="$L2" bash "$PC" u "$L2B" --contract c.md)"
+printf '%s\n' "$l2out" | grep -qxF 'scope: ok src/x.sh listed' && ok "(l2-sc1) :NN suffix is stripped" || bad "(l2-sc1) src/x.sh:48"
+{ printf '%s\n' "$l2out" | grep -qxF 'scope: ok src/a.sh listed' && printf '%s\n' "$l2out" | grep -qxF 'scope: ok src/b.sh listed'; } && ok "(l2-sc2) {a,b} expands" || bad "(l2-sc2) brace group"
+printf '%s\n' "$l2out" | grep -E '^scope: .* src/[cde]\.sh' | grep -qv 'scope: ok .* listed' && printf '%s\n' "$l2out" | grep -qE '^scope: out src/c\.sh' && ok "(l2-sc3) nested braces stay out" || bad "(l2-sc3) nested group: $(printf '%s\n' "$l2out" | grep 'src/c')"
+cd "$T"
+
 # (j) prose: the reviewer and the protocol name the pre-review script and its FAIL rule.
 flat() { tr -s ' \n' ' ' < "$1"; }
 for f in agents/reviewer.md .claude/agents/reviewer.md; do
