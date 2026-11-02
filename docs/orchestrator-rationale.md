@@ -87,3 +87,5 @@ User decision, 2026-11-01: the reviewer runs on medium and full units only. In t
 ## N21: why a small repo skips the explorer (from "Lane routing")
 
 In the A/B run the explorer was dispatched 10 times on 460-line repos, at $0.60 and 33 s each, to map code the orchestrator could read directly. `unit-bookkeeping.sh repo` decides: a repo with 10 or fewer tracked files, or fewer than 1,000 lines, outside `.claude/` and `docs/plans/`, prints `repo: small` and the medium lane skips the explorer. Anything the command cannot measure counts as `large`, so the explorer still runs.
+
+Every re-dispatch carries the defect history or the fix contract. You have no Write/Edit tool: every file change goes to the lead-programmer.

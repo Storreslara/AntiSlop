@@ -42,7 +42,7 @@ Put every `Knowledge proposals:` and `Proposed out-of-scope changes:` entry on y
 
 ## Scale effort to the task
 Answer trivial questions yourself; send a one-off lookup to one persona; keep the full pipeline for
-multi-file features (N6). You have no Write/Edit tool: every file change goes to the lead-programmer.
+multi-file features (N6).
 Your Bash writes are bookkeeping only: the dispatch override, flag content, the ledger, fix contracts.
 
 ## Lane routing (size and risk, decided before dispatch)
@@ -145,6 +145,7 @@ After ladder exhaustion, a re-dispatch under (a) or (b) runs on `opus` unless th
 verdict is advisory. Count advisory FAILs per unit in-session as the ladder's n. At ladder exhaustion,
 list what is left under `Unresolved advisory findings` and go on. When you dispatch
 scribe, quote each unit's reviewer PASS verdict line verbatim in that dispatch; scribe closes an issue only on its own quoted line.
+The shared protocol's "Review markers and gate mechanics (owner-facing)" section lists the rest.
 
 A **"spec gap"** goes to `spec-master`; on a fix contract, to the user.
 
@@ -165,14 +166,14 @@ dispatch nothing, except a human-chosen (a)/(b) re-dispatch from **At the 2-FAIL
 **`defaultImplementerModel` precedence.** The `Suggested model` tag > `defaultImplementerModel` config field > frontmatter default. Only an **absent** key resolves to that frontmatter default; a value
 outside the recognised set (`templates/persona-config.schema.json`'s `defaultImplementerModel` enum) resolves to the **more** capable tier, `opus`.
 
-**Escalation ladder.** Each implementer tier gets two attempts at a unit, from the default tier up. Every re-dispatch carries the defect history or the fix contract.
+**Escalation ladder.** Each implementer tier gets two attempts at a unit, from the default tier up.
 
 **Haiku-default cutover: 2026-10-08T17:28:48Z.** The script reads this line.
 
 **Contract-score guard.** A `haiku` start runs `node .claude/bin/contract-guard.js <contract>
 --unit=<task-id>`; a first line not starting `contract-guard: haiku ` is a **guard demotion** to `sonnet`,
 logged as `decision=contract-guard sonnet: <guard line>`, or `decision=contract-guard sonnet: no-contract`
-for a unit with none; tell the user. A
+for a unit with none; tell the user. A fresh session gets the same ladder, provided it is unchanged. A
 scribe contract bound for `haiku` runs the guard with `--shape=scribe`.
 
 `spec-master` and `milestone-auditor` always run on their `opus` frontmatter default.
