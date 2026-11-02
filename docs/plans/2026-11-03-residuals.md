@@ -186,8 +186,9 @@ scan inside each submodule instead of escalating.
 ## Dispatch
 
 Contracts, in dispatch order (committed before dispatch): [rs-stamp](2026-11-03-residuals/contracts/rs-stamp.md),
-[rs-corelib](2026-11-03-residuals/contracts/rs-corelib.md), [rs-check](2026-11-03-residuals/contracts/rs-check.md);
-rs-tokens, rs-prose, rs-docs, rs-release pending (next spawn; see appendix "Contract notes").
+[rs-corelib](2026-11-03-residuals/contracts/rs-corelib.md), [rs-check](2026-11-03-residuals/contracts/rs-check.md),
+[rs-tokens](2026-11-03-residuals/contracts/rs-tokens.md), [rs-prose](2026-11-03-residuals/contracts/rs-prose.md),
+[rs-docs](2026-11-03-residuals/contracts/rs-docs.md), [rs-release](2026-11-03-residuals/contracts/rs-release.md).
 
 ## Scribe update hint
 
