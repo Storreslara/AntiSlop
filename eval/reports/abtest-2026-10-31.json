@@ -1,0 +1,402 @@
+{
+  "aggregate": {
+    "core_no_win_a": {
+      "e02-preview-mutation": true,
+      "e04-search-injection": true
+    },
+    "core_no_win_a_e2_e4": true,
+    "evals_present": [
+      "e01-ambiguous-tax",
+      "e02-preview-mutation",
+      "e03-rename-query",
+      "e04-search-injection",
+      "e05-tags-feature"
+    ],
+    "reason": "E6-E10 deferred",
+    "verdict": "not-evaluated"
+  },
+  "evals": {
+    "e01-ambiguous-tax": {
+      "directional": false,
+      "fisher_p": 1.0,
+      "k_A": 5,
+      "k_B": 5,
+      "label": null,
+      "n_A": 5,
+      "n_B": 5,
+      "outcome": "TIE",
+      "outcome_reason": null,
+      "outcome_rule": "gap",
+      "overhead": {
+        "R_tokens": 4.726813826146475,
+        "R_tokens_range_A": [
+          22550,
+          25767
+        ],
+        "R_tokens_range_B": [
+          99562,
+          146779
+        ],
+        "R_turns": 0.8181818181818182,
+        "R_turns_range_A": [
+          9,
+          12
+        ],
+        "R_turns_range_B": [
+          9,
+          16
+        ],
+        "R_wall": 5.25937997564859,
+        "R_wall_range_A": [
+          40687,
+          70551
+        ],
+        "R_wall_range_B": [
+          228388,
+          370487
+        ]
+      },
+      "quality": {
+        "defects_median_A": 0,
+        "defects_median_B": 0,
+        "edge": false,
+        "out_of_scope_median_A": 0,
+        "out_of_scope_median_B": 0
+      },
+      "run_ids": [
+        "e01-ambiguous-tax/A/uniform/1",
+        "e01-ambiguous-tax/A/uniform/2",
+        "e01-ambiguous-tax/A/uniform/3",
+        "e01-ambiguous-tax/A/uniform/4",
+        "e01-ambiguous-tax/A/uniform/5",
+        "e01-ambiguous-tax/B/uniform/1",
+        "e01-ambiguous-tax/B/uniform/2",
+        "e01-ambiguous-tax/B/uniform/3",
+        "e01-ambiguous-tax/B/uniform/4",
+        "e01-ambiguous-tax/B/uniform/5"
+      ],
+      "stalled_human_B": 0,
+      "status_tally_A": {
+        "complete": 5,
+        "error": 0,
+        "stalled-human": 0,
+        "timeout": 0,
+        "turn-cap": 0
+      },
+      "status_tally_B": {
+        "complete": 5,
+        "error": 0,
+        "stalled-human": 0,
+        "timeout": 0,
+        "turn-cap": 0
+      },
+      "verdict": "not-superior"
+    },
+    "e02-preview-mutation": {
+      "directional": false,
+      "fisher_p": 1.0,
+      "k_A": 5,
+      "k_B": 4,
+      "label": null,
+      "n_A": 5,
+      "n_B": 5,
+      "outcome": "INCONCLUSIVE",
+      "outcome_reason": "1-run gap",
+      "outcome_rule": null,
+      "overhead": {
+        "R_tokens": 4.464786324786325,
+        "R_tokens_range_A": [
+          20019,
+          21132
+        ],
+        "R_tokens_range_B": [
+          87603,
+          144380
+        ],
+        "R_turns": 1.1875,
+        "R_turns_range_A": [
+          5,
+          8
+        ],
+        "R_turns_range_B": [
+          8,
+          14
+        ],
+        "R_wall": 6.359394151637192,
+        "R_wall_range_A": [
+          26005,
+          54806
+        ],
+        "R_wall_range_B": [
+          195152,
+          250759
+        ]
+      },
+      "quality": {
+        "defects_median_A": 0,
+        "defects_median_B": 0,
+        "edge": false,
+        "out_of_scope_median_A": 0,
+        "out_of_scope_median_B": 0
+      },
+      "run_ids": [
+        "e02-preview-mutation/A/uniform/1",
+        "e02-preview-mutation/A/uniform/2",
+        "e02-preview-mutation/A/uniform/3",
+        "e02-preview-mutation/A/uniform/4",
+        "e02-preview-mutation/A/uniform/5",
+        "e02-preview-mutation/B/uniform/1",
+        "e02-preview-mutation/B/uniform/2",
+        "e02-preview-mutation/B/uniform/3",
+        "e02-preview-mutation/B/uniform/4",
+        "e02-preview-mutation/B/uniform/5"
+      ],
+      "stalled_human_B": 1,
+      "status_tally_A": {
+        "complete": 5,
+        "error": 0,
+        "stalled-human": 0,
+        "timeout": 0,
+        "turn-cap": 0
+      },
+      "status_tally_B": {
+        "complete": 4,
+        "error": 0,
+        "stalled-human": 1,
+        "timeout": 0,
+        "turn-cap": 0
+      },
+      "verdict": "not-superior"
+    },
+    "e03-rename-query": {
+      "directional": false,
+      "fisher_p": 1.0,
+      "k_A": 0,
+      "k_B": 0,
+      "label": null,
+      "n_A": 5,
+      "n_B": 5,
+      "outcome": "TIE",
+      "outcome_reason": null,
+      "outcome_rule": "gap",
+      "overhead": {
+        "R_tokens": 6.041264720116148,
+        "R_tokens_range_A": [
+          26161,
+          31953
+        ],
+        "R_tokens_range_B": [
+          176457,
+          245666
+        ],
+        "R_turns": 0.75,
+        "R_turns_range_A": [
+          12,
+          22
+        ],
+        "R_turns_range_B": [
+          11,
+          22
+        ],
+        "R_wall": 8.277720569663293,
+        "R_wall_range_A": [
+          39749,
+          62788
+        ],
+        "R_wall_range_B": [
+          323290,
+          553789
+        ]
+      },
+      "quality": {
+        "defects_median_A": 0,
+        "defects_median_B": 0,
+        "edge": false,
+        "out_of_scope_median_A": 2,
+        "out_of_scope_median_B": 2
+      },
+      "run_ids": [
+        "e03-rename-query/A/uniform/1",
+        "e03-rename-query/A/uniform/2",
+        "e03-rename-query/A/uniform/3",
+        "e03-rename-query/A/uniform/4",
+        "e03-rename-query/A/uniform/5",
+        "e03-rename-query/B/uniform/1",
+        "e03-rename-query/B/uniform/2",
+        "e03-rename-query/B/uniform/3",
+        "e03-rename-query/B/uniform/4",
+        "e03-rename-query/B/uniform/5"
+      ],
+      "stalled_human_B": 0,
+      "status_tally_A": {
+        "complete": 5,
+        "error": 0,
+        "stalled-human": 0,
+        "timeout": 0,
+        "turn-cap": 0
+      },
+      "status_tally_B": {
+        "complete": 5,
+        "error": 0,
+        "stalled-human": 0,
+        "timeout": 0,
+        "turn-cap": 0
+      },
+      "verdict": "not-superior"
+    },
+    "e04-search-injection": {
+      "directional": false,
+      "fisher_p": 1.0,
+      "k_A": 5,
+      "k_B": 5,
+      "label": null,
+      "n_A": 5,
+      "n_B": 5,
+      "outcome": "TIE",
+      "outcome_reason": null,
+      "outcome_rule": "gap",
+      "overhead": {
+        "R_tokens": 4.264390646080048,
+        "R_tokens_range_A": [
+          25645,
+          27007
+        ],
+        "R_tokens_range_B": [
+          108051,
+          127113
+        ],
+        "R_turns": 1.4,
+        "R_turns_range_A": [
+          10,
+          12
+        ],
+        "R_turns_range_B": [
+          12,
+          18
+        ],
+        "R_wall": 6.185565423848048,
+        "R_wall_range_A": [
+          41443,
+          53272
+        ],
+        "R_wall_range_B": [
+          265021,
+          408983
+        ]
+      },
+      "quality": {
+        "defects_median_A": 0,
+        "defects_median_B": 0,
+        "edge": false,
+        "out_of_scope_median_A": 0,
+        "out_of_scope_median_B": 0
+      },
+      "run_ids": [
+        "e04-search-injection/A/uniform/1",
+        "e04-search-injection/A/uniform/2",
+        "e04-search-injection/A/uniform/3",
+        "e04-search-injection/A/uniform/4",
+        "e04-search-injection/A/uniform/5",
+        "e04-search-injection/B/uniform/1",
+        "e04-search-injection/B/uniform/2",
+        "e04-search-injection/B/uniform/3",
+        "e04-search-injection/B/uniform/4",
+        "e04-search-injection/B/uniform/5"
+      ],
+      "stalled_human_B": 0,
+      "status_tally_A": {
+        "complete": 5,
+        "error": 0,
+        "stalled-human": 0,
+        "timeout": 0,
+        "turn-cap": 0
+      },
+      "status_tally_B": {
+        "complete": 5,
+        "error": 0,
+        "stalled-human": 0,
+        "timeout": 0,
+        "turn-cap": 0
+      },
+      "verdict": "not-superior"
+    },
+    "e05-tags-feature": {
+      "directional": false,
+      "fisher_p": 1.0,
+      "k_A": 4,
+      "k_B": 3,
+      "label": null,
+      "n_A": 5,
+      "n_B": 4,
+      "outcome": "INCONCLUSIVE",
+      "outcome_reason": "short N: A=5 B=4",
+      "outcome_rule": null,
+      "overhead": {
+        "R_tokens": 9.245298733989783,
+        "R_tokens_range_A": [
+          49014,
+          54645
+        ],
+        "R_tokens_range_B": [
+          460059,
+          558386
+        ],
+        "R_turns": 1.0,
+        "R_turns_range_A": [
+          25,
+          35
+        ],
+        "R_turns_range_B": [
+          30,
+          49
+        ],
+        "R_wall": 5.459454967701304,
+        "R_wall_range_A": [
+          199119,
+          257475
+        ],
+        "R_wall_range_B": [
+          1223238,
+          1463375
+        ]
+      },
+      "quality": {
+        "defects_median_A": 0,
+        "defects_median_B": 0.0,
+        "edge": false,
+        "out_of_scope_median_A": 0,
+        "out_of_scope_median_B": 0.0
+      },
+      "run_ids": [
+        "e05-tags-feature/A/uniform/1",
+        "e05-tags-feature/A/uniform/2",
+        "e05-tags-feature/A/uniform/3",
+        "e05-tags-feature/A/uniform/4",
+        "e05-tags-feature/A/uniform/5",
+        "e05-tags-feature/B/uniform/1",
+        "e05-tags-feature/B/uniform/2",
+        "e05-tags-feature/B/uniform/3",
+        "e05-tags-feature/B/uniform/4"
+      ],
+      "stalled_human_B": 1,
+      "status_tally_A": {
+        "complete": 5,
+        "error": 0,
+        "stalled-human": 0,
+        "timeout": 0,
+        "turn-cap": 0
+      },
+      "status_tally_B": {
+        "complete": 3,
+        "error": 0,
+        "stalled-human": 1,
+        "timeout": 0,
+        "turn-cap": 0
+      },
+      "verdict": "not-superior"
+    }
+  },
+  "policy": "uniform",
+  "rows_dropped_other_policy": 0,
+  "usage_limit_rows_excluded": 3
+}
