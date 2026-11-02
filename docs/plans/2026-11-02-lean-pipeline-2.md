@@ -133,7 +133,8 @@ adds or renames a domain term, `CONTEXT.md` or a docs page, and stays advisory; 
 "Rewording a command so that a gate's scan misses it is the same bypass."),
 `tests/protocol-cross-references.test.js` (pin both rows: the four dropped headers absent from the deployed
 copies, every other include present), `tests/cli-backfill.test.js` (the control comment at about :810 says
-the pending-review flag is in the reviewer row; correct it), `CHANGELOG.md` with D3's sizes. Criteria: the
+the pending-review flag is in the reviewer row; correct it), `tests/persona-prose-pins.test.sh` (LP pin
+:48 negated, reviewer off :50), `CHANGELOG.md` with D3's sizes. Criteria: the
 four `## ` headings absent from the two deployed bodies, every kept heading present, deployed sizes at or
 below 25,200 (LP) and 42,500 (reviewer), `--update --force-render` succeeds, and no deployed reviewer
 line still says to follow a preloaded ubiquitous-language skill.
@@ -296,6 +297,8 @@ Files: `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`, and `--upda
   ($0.6); the corpus had none. `plugin.json` and the install skill still name `cacheTtl` as a floor reason.
 - **l2-scope widens the scope gate's listed set** to what authors meant; a brace list naming a sensitive
   path makes the unit heavier, never lighter.
+- **Follow-up:** `scripts/token-usage/{agg,agg2,cache}.py` key the reviewer on two preloaded skills; after
+  l2-slim a reviewer transcript (roast-work only) counts as `other`.
 - **l2-ckhard** escalates every small unit in a sparse checkout (skip-worktree bits); fails closed.
 - **Accepted residual (user, 2026-11-01):** a writer can `rm` its own flag before its stop; the stop
   rewrites it (unit 10a), but not when the writer's Bash removes it after its last stop.
