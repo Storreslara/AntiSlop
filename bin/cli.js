@@ -768,7 +768,8 @@ function canonicalProtocolText() {
 const CANONICAL_PROTOCOL_SECTIONS = parseProtocolSections(canonicalProtocolText()).sections;
 const CANONICAL_PROTOCOL_HEADERS = CANONICAL_PROTOCOL_SECTIONS.map((s) => s.header);
 
-// Carried by every full-tier persona regardless of role.
+// Carried by every full-tier persona regardless of role, except that the
+// lead-programmer row names these itself, minus Structural questions.
 const UNIVERSAL_PROTOCOL_CORE = [
   'Structural questions go to the explorer',
   'Answer shape',
@@ -814,8 +815,13 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
     ],
   },
   'lead-programmer': {
+    // Universal sections named one by one: Structural questions is dropped.
     include: [
-      ...UNIVERSAL_PROTOCOL_CORE,
+      'Answer shape',
+      'Scope Bash output before it enters context',
+      'Agent-teams mode (only relevant if you were spawned as a teammate)',
+      'Terminal status line (every dispatched turn)',
+      'Blocked by a gate you do not own (never self-authorize a bypass)',
       'Teammate Write/Edit fallback and gate rephrasing doctrine',
       'WIP sentinel (mid-task handoff, not a bypass)',
       'Running acceptance-criteria commands (there is no self-wake)',
@@ -823,7 +829,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Machine-checkable criteria',
       'Dispatch contract (five fields)',
       'Review ownership — one unit, one review, single owner',
-      'Continuing after a FAIL verdict',
       'A note on `memory`',
     ],
     drop: [
@@ -835,21 +840,31 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
       'Third verdict: insufficient-context',
+      // l2-slim: no Agent tool, and lead-programmer.md states its own no-explorer
+      // and doubted-claim rules.
+      'Structural questions go to the explorer',
+      // l2-slim: addressed to the re-delegator and the cap owner;
+      // lead-programmer.md states its own FAIL and fix-turn rules.
+      'Continuing after a FAIL verdict',
     ],
   },
   reviewer: {
     include: [
       ...UNIVERSAL_PROTOCOL_CORE,
-      'Teammate Write/Edit fallback and gate rephrasing doctrine',
       'Running acceptance-criteria commands (there is no self-wake)',
       'Machine-checkable criteria',
       'Dispatch contract (five fields)',
       'Review ownership — one unit, one review, single owner',
       'Review markers and gate mechanics (owner-facing)',
-      'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
     ],
     drop: [
+      // l2-slim: no Write/Edit tool and no `memory:`; reviewer.md's gate bullet
+      // carries the rewording-is-a-bypass rule.
+      'Teammate Write/Edit fallback and gate rephrasing doctrine',
+      // l2-slim: orchestrator-facing; the kept Review markers section states
+      // that a reviewer's stop clears every flag.
+      'Pending-review flag (default-mode review backstop)',
       'WIP sentinel (mid-task handoff, not a bypass)',
       'Continuing after a FAIL verdict',
       'A note on `memory`',

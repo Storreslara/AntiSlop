@@ -808,11 +808,11 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     try {
       buildBaselineProject(tmp, {}, ['reviewer']);
       const reviewerPath = path.join(tmp, '.claude', 'agents', 'reviewer.md');
-      // Control: of the two forced sections, only the WIP sentinel is absent
-      // from reviewer's row (the pending-review flag is in its include list
-      // already), so the WIP sentinel is what carries the proof here.
+      // Control: reviewer's row drops both forced sections (l2-slim), so each
+      // carries the proof here.
       const ungated = fs.readFileSync(reviewerPath, 'utf8');
       assert.ok(!ungated.includes('## WIP sentinel'), 'control: an ungated reviewer must not carry the WIP sentinel section');
+      assert.ok(!ungated.includes('## Pending-review flag'), 'control: an ungated reviewer must not carry the Pending-review flag section');
 
       const configPath = path.join(tmp, '.claude', 'persona-config.json');
       const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));

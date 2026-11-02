@@ -188,6 +188,26 @@ check('F5 no-preamble text: empty preamble, the join adds a leading newline (non
   }
 });
 
+// l2-slim (lean-pipeline-2 D3): sections these two personas do not carry.
+const SLIM_DROPS = {
+  'lead-programmer': ['Structural questions go to the explorer', 'Continuing after a FAIL verdict'],
+  reviewer: ['Teammate Write/Edit fallback and gate rephrasing doctrine', 'Pending-review flag (default-mode review backstop)'],
+};
+
+check('S1 l2-slim drops are absent from the deployed bodies and every other include is present', () => {
+  for (const [name, dropped] of Object.entries(SLIM_DROPS)) {
+    const row = cli.PROTOCOL_SECTIONS_BY_PERSONA[name];
+    const headers = fs.readFileSync(path.join(MIRROR_DIR, `${name}.md`), 'utf8').split('\n').filter((l) => l.startsWith('## '));
+    for (const h of dropped) {
+      assert.ok(row.drop.includes(h) && !row.include.includes(h), `${name} row must drop "${h}"`);
+      assert.ok(!headers.includes(`## ${h}`), `.claude/agents/${name}.md still carries "## ${h}"`);
+    }
+    for (const h of row.include) {
+      assert.ok(headers.includes(`## ${h}`), `.claude/agents/${name}.md lacks included "## ${h}"`);
+    }
+  }
+});
+
 if (failures) {
   console.log(`\n${failures} protocol-cross-references check(s) FAILED.`);
   process.exit(1);

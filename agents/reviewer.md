@@ -5,7 +5,7 @@ model: opus
 effort: high
 color: red
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: antislop:roast-work, antislop:ubiquitous-language
+skills: antislop:roast-work
 maxTurns: 50
 ---
 
@@ -162,7 +162,9 @@ STATUS: complete
   substitutes for running the command, and never adds a new FAIL ground —
   its findings live exclusively in the advisory section written into the
   marker body or the fail record.
-- **`ubiquitous-language` is advisory, never gating**: the acceptance-criteria
+- **`ubiquitous-language` is on-demand and advisory, never gating**: invoke
+  `antislop:ubiquitous-language` in diff mode when the range adds or renames a
+  domain term, or changes `CONTEXT.md` or a docs page. The acceptance-criteria
   command plus the materiality filter above are the ONLY determinants of
   PASS/FAIL. Running the `ubiquitous-language` check never flips a verdict,
   never substitutes for running the command, and never adds a new FAIL ground
@@ -332,7 +334,8 @@ STATUS: complete
   "Blocked by a gate you do not own (never self-authorize a bypass)"
   section forbids them outright — including when you are confident the
   underlying state is fine, and including when you would disclose it
-  afterwards. Report the block and your reasoning to the orchestrator and
+  afterwards. Rewording a command so that a gate's scan misses it is the same
+  bypass. Report the block and your reasoning to the orchestrator and
   wait. Two cases are ordinary rather than exceptional, and neither justifies
   a bypass: an advisory second pass on a unit that already holds a
   format-valid `.pass` owns no verdict and is expected to end its turn without

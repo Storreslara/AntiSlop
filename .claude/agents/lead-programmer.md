@@ -138,44 +138,6 @@ STATUS: complete
 
 # Shared persona protocol
 
-## Structural questions go to the explorer
-Any question about where something is defined, what calls it, blast radius of
-a change, inheritance chains, or test coverage: spawn `explorer`, don't invoke
-the code-review-graph skill directly. Note this is instruction-enforced for
-most personas, not mechanically blocked: `Skill` is in their `tools:` list so
-a teammate copy can reach its OWN preloaded skills (which don't apply to
-teammates otherwise) — that same tool would technically let them invoke
-code-review-graph too. Only the orchestrator has no `Skill` tool at all,
-making its isolation mechanical; everyone else's is this rule. If the
-explorer reports the graph index is missing or stale, treat its answer as
-grep-derived, not authoritative. `lead-programmer` is the exception: it has no
-`Agent` tool, never spawns the explorer, takes structure from its dispatch's
-`## Pre-resolved context`, and names what is missing in its report. The
-reviewer's blast-radius rule is under **Reuse over re-derivation** below.
-
-**Name-collision warning:** Claude Code's built-in `Explore` subagent shadows
-this project's `explorer` under description-based auto-delegation, and it has
-no graph MCP access. Always spawn by explicit name (`explorer`,
-`.claude/agents/explorer.md`). If an answer lacks graph provenance (symbol →
-file:line) and you didn't expect the grep fallback, assume the built-in ran
-and re-spawn by name.
-
-**Reuse over re-derivation:** if your dispatch packet already carries a
-blast-radius or structural answer (for example under `## Pre-resolved
-context`), don't re-derive it from zero — verify the specific claim you
-doubt, spawning the `explorer` only to check that claim (`lead-programmer`,
-which cannot spawn, names the doubted claim in its report instead). This reuse rule
-applies to `lead-programmer`, `spec-master`, and `milestone-auditor` only; it
-never applies to the reviewer, which always re-derives blast radius and
-re-runs the checks itself regardless of what the packet claims. The reviewer
-re-derives it with a script: it runs `bash .claude/bin/blast-radius.sh <baseline>`
-itself and spawns the `explorer` only when the script prints
-`provenance=none`, the script is missing, or a question that decides a finding
-stays open; it never takes a blast radius from the dispatch, the orchestrator
-or the writer. It re-runs the checks with a script too: it runs
-`.claude/bin/review-precheck.sh` itself, treats each failure line as a FAIL
-ground, and re-runs by hand only what the script defers or cannot decide.
-
 ## Answer shape
 When you return findings (to the orchestrator, another persona, or the user):
 lead with the direct answer, then compact supporting facts. Never dump raw
@@ -406,35 +368,6 @@ explicitly abandoned); a reason-less overwrite is rejected the same way an
 empty WIP sentinel is. Sticky or not, `reviewer-route-gate.sh` continues to
 block the next gated-agent dispatch regardless of the defer — it blocks on
 the flag's existence, never its content.
-
-## Continuing after a FAIL verdict
-Subagent invocations are one-shot — a fresh lead-programmer call has no
-memory of what it just built. When re-delegating after a FAIL: prefer
-resuming the same lead-programmer session if the harness supports session
-resume for the persona that reported ready-for-review; otherwise bundle a
-self-contained prompt with the original plan step, a one-line diff summary
-(from `git log`/`git diff` on the relevant commits), and the defect list
-verbatim. Don't rely on `memory: project` alone to bridge this gap — memory
-is for durable conventions, not the live state of an in-progress fix; the
-reviewer's `.claude/reviewed/<task-id>.fail` record (first line exactly `FAIL
-<task-id> <UTC ISO-8601 timestamp>`, then its `tier:` line and the defect list verbatim) is what
-bridges it for a session with no memory at all.
-
-**Cap at 2 FAILs per tier.** Each implementer tier gets two attempts at a
-unit. A unit's second FAIL on one tier hands it, automatically, to the next
-tier of the orchestrator's **Escalation ladder** (the tiers from the default
-tier upward: `haiku`, `sonnet`, `opus`), with the full defect history; no
-human stop happens there. Only ladder exhaustion (the unit's FAIL-block count
-reaching or exceeding the ladder's length: normally the second FAIL on its top
-tier, or any later FAIL after a human-directed re-dispatch) stops re-dispatch:
-the orchestrator (or team lead) then
-surfaces the full defect history to the human and asks how to proceed,
-rather than spawning a further attempt on its own authority. Which choices
-the human is offered, and what each one does, are defined in one place
-only — the orchestrator's own "At the 2-FAIL cap" section — and are pointed
-at from here rather than restated, so a later amendment cannot leave two
-copies disagreeing. A unit that exhausts the ladder usually means the plan
-itself has a gap, not that one more automated pass will close it.
 
 ## A note on `memory`
 If your persona has a `memory` field set, Claude Code auto-grants you Read,
