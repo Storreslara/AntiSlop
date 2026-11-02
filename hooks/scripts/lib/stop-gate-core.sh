@@ -27,7 +27,7 @@
 #     "small-lane agent=<id> no-flag" to review-audit.log, unless the marker check trips: then
 #     write it and log "small-lane d6-trip agent=<id> flag"), then block, naming the file, when a
 #     *.pass, *.fail or *.blocked marker is newer than reviewed/.writer-dispatch-stamp (touched by
-#     dispatch-hygiene.sh at each gated dispatch; no stamp, no check; small lane included). The flag
+#     dispatch-hygiene.sh at each allowed gated dispatch; no stamp, no check; small lane included). The flag
 #     comes first because the loop-guarded stop after a block is allowed without reaching this rule.
 #     It replaces whatever stands at the flag path (state_replace_pending_review); when nothing can be
 #     written there, block, naming the path.
@@ -49,7 +49,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
     state_append_audit_log "review-audit.log" "$(utc) cleared-by=reviewer"
     allow
   fi
-  ns_tail="write 'defer: <reason>' or 'skip: <reason>' into a flag that exists."
+  ns_tail="ask the user to add a first line 'defer: <reason>' or 'skip: <reason>' to a flag that exists."
   [ ! -f "${dot}/bin/unit-bookkeeping.sh" ] \
     || ns_tail="run: bash ${dot_label}/bin/unit-bookkeeping.sh flag defer|skip <reason> (existing flags only)."
   echo "Reviewer identity '${agent_type}' is not this project's reviewer (unrecognized namespace) - pending-review flags were NOT cleared. Dispatch this project's own reviewer, or ${ns_tail}" >&2

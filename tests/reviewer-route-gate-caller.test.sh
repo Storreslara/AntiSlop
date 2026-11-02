@@ -365,6 +365,23 @@ else
   echo "FAIL (l2-g6) mode=$(stat -c %a "$d/.claude/.pending-review.lp-1")"; fail=1
 fi
 
+# rs-corelib: an unwritable .claude leaves a plain flag's first line unchanged and logs no mark.
+d="$(make_project rs-r1)"
+printf 'x agent=lp-1\n' > "$d/.claude/.pending-review.lp-1"
+if [ "$(id -u)" = 0 ]; then
+  echo "SKIP (rs-r1) root ignores directory modes"
+else
+  chmod a-w "$d/.claude"
+  route "$d" "$(payload "" reviewer)"
+  chmod u+w "$d/.claude"
+  if [ "$rc" = 0 ] && [ "$(head -n 1 "$d/.claude/.pending-review.lp-1")" = "x agent=lp-1" ] \
+     && ! grep -rq 'review-dispatched flags=' "$d/.claude"; then
+    echo "OK   (rs-r1) read-only .claude: first line unchanged, no mark audit line"
+  else
+    echo "FAIL (rs-r1) rc=$rc"; fail=1
+  fi
+fi
+
 # --- MUTATION CONTROL (reviewer-run). Reintroduce the pre-fix state - the
 # new unconditional name-forgery block removed, the existing narrower
 # reviewer-targeted `name:` check (:54-61 as of 915acec) left intact - in a

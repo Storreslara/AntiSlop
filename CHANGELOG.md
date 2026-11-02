@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - **A signal never moves the writer-dispatch stamp (rs-stamp).** `dispatch-hygiene.sh` traps TERM, INT and HUP to clear the stamp-due flag and exit 143, 130 and 129, so the EXIT trap cannot touch `.writer-dispatch-stamp` after a signal. Pins `(rs-s1)` to `(rs-s3)` in `tests/dispatch-hygiene.test.sh`.
+- **Corelib comments and stop-gate message (rs-corelib).** `stop-gate-core.sh` says the stamp is touched at each allowed gated dispatch; the no-script wrong-namespace message tells the user to add a first line `defer:` or `skip:` to a flag; `state_replace_pending_review` documents its umask fallback. Pins `(l2-g2)` moved, `(rs-r1)` added in `tests/reviewer-route-gate-caller.test.sh`.
 
 ## [0.34.0] - 2026-11-02
 

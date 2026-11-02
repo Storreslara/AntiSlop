@@ -107,8 +107,9 @@ state_write_pending_review() {
   fi
 }
 
-# Replaces whatever stands at the flag path (file or symlink, never followed) with a 644 file. A
-# directory there skips the mv (it would move the file into it). Returns 1 when nothing was written.
+# A directory at the flag path skips the mv (it would move the file into it). Returns 1 when nothing
+# was written. Replaces whatever stands at the flag path (file or symlink, never followed) with a 644
+# file; the fallback create after a mktemp or mv failure uses the umask.
 state_replace_pending_review() {
   local agent_id="$1"
   local content="$2"

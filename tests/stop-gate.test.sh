@@ -234,7 +234,7 @@ else bad "(l2-g1) rc=$rc err=$err"; fi
 
 d="$(project l2-g2 enforce)"
 run "$d" "$oth"
-if grep -q "write 'defer: <reason>'" <<< "$err" && ! grep -q 'unit-bookkeeping' <<< "$err"; then ok "(l2-g2) script absent: old message"
+if grep -q "ask the user to add a first line 'defer: <reason>'" <<< "$err" && ! grep -q 'unit-bookkeeping' <<< "$err"; then ok "(l2-g2) script absent: ask-the-user message"
 else bad "(l2-g2) rc=$rc err=$err"; fi
 
 lane_case l2-g3 enforce medium same
