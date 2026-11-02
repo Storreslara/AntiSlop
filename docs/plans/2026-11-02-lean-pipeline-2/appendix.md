@@ -59,11 +59,16 @@ remain, unit 5); the marker-write reviewer loop is already labelled a smoke chec
 and the local `marker_valid` copy remain, unit 14).
 
 ## Marker sweep
-`bash bin/marker-audit.sh . --notes --surface=<path>` is best-effort and slow here: `agents/reviewer.md`
-returned 93 lines and `agents/orchestrator.md` 211; the other surfaces did not finish within the tool
-timeout. Disposition: the recent rv- and lp- PASS notes were taken from the session's follow-up harvest
-(`followups.txt`) and each is placed in D7, Risks or this appendix. The older notes predate 0.32.0's
-retirements and were not re-read one by one; an empty or partial sweep proves nothing.
+`bash bin/marker-audit.sh . --notes --surface=<path>` (best-effort; about 2 minutes per surface) returned
+these `NOTE[spec]`/`untagged` line counts: `agents/reviewer.md` 93, `agents/orchestrator.md` 211,
+`bin/cli.js` 208, `bin/unit-bookkeeping.sh` 6, `bin/review-precheck.sh` 5, `templates/persona-protocol.md`
+84, `hooks/scripts/lib/stop-gate-core.sh` 10, `hooks/scripts/lib/reviewer-route-gate-core.sh` 3,
+`hooks/scripts/lib/unit-scope.sh` 1, `hooks/scripts/dispatch-hygiene.sh` 16,
+`hooks/scripts/reviewed-path-gate.sh` 13, `adapters` 112, `eval/abtest` 17, `CONTEXT.md` 528.
+Disposition: the recent rv- and lp- PASS notes come from the session's follow-up harvest (`followups.txt`)
+and each is placed in D7, Risks or this appendix. The older notes predate 0.32.0's retirements and were
+not re-read one by one. Contract spawns for units 3, 4, 9, 11 and 12 re-read their surface's lines (all
+under 11). An empty or partial sweep proves nothing.
 
 ## Tracker
 Not published: this repo's plans are dispatched from contract files (publication is optional); each
