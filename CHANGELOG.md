@@ -4,6 +4,7 @@
 
 - **Reviewer drops the 1h cache TTL (l2-ttl).** `cacheTtl: 1h` removed from `agents/reviewer.md`: it cost about $6.0 of $10.1 over 25 runs and 14 cross-run cache hits were lost; the 5m default applies. `tests/validate.sh` now asserts the field is absent.
 - **Reviewer and lead-programmer carry only the protocol sections they need (l2-slim).** The lead-programmer drops Structural questions and Continuing after a FAIL; the reviewer drops Teammate Write/Edit fallback and Pending-review flag, and its gate bullet now says rewording a command to dodge a scan is a bypass. The reviewer preloads only `antislop:roast-work` and invokes `antislop:ubiquitous-language` on demand. Deployed bytes: lead-programmer 29,325 to 24,850, reviewer 45,770 to 42,160.
+- **Review header states gating and constitution; `repo` sizes the repo (l2-bkhdr).** `unit-bookkeeping.sh review` prints `Review gating: off|enforce` and `Constitution: present|absent` after `Reviewer model:`; new `repo` subcommand prints `repo: small|large files=<n> lines=<n>` for tracked files outside `.claude` and `docs/plans`.
 
 ## [0.33.0] - 2026-11-01
 

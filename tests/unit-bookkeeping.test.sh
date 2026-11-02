@@ -275,4 +275,22 @@ want "(rv-e10) fenced heading" "$(e_run "$CRIT1"$'\n'"$CRITF"$'\n~~~\n## x\n~~~\
 mkdir -p sub && printf '## Acceptance criteria\n%s\n%s\n' "$CRIT1" "$CRIT2" > sub/c.md
 want "(rv-e10) contract path is read from the repo top" "$(POST='cd sub' e_run "$CRIT1"$'\n'"$CRITF"$'\n## Acceptance criteria\n'"$CRIT2" d10s.txt)" 'check: escalate unit=ue reason=criteria-mismatch'
 
+# l2-bkhdr: review header gating and constitution lines, and the repo size subcommand.
+hdr() { (cd "$T/repo" && CLAUDE_PROJECT_DIR="$1" bash "$UB" review ub "$BASE" | grep -E '^(Review gating|Constitution):' | tr '\n' '|'); }
+H="$T/hd"; mkdir -p "$H/.claude"
+echo '{"reviewGating":{"mode":"off"}}' > "$H/.claude/persona-config.json"
+want "(l2-b1)" "$(hdr "$H")" 'Review gating: off|Constitution: absent|'
+echo '{}' > "$H/.claude/persona-config.json"; : > "$H/.claude/constitution.md"
+want "(l2-b2) absent key" "$(hdr "$H")" 'Review gating: enforce|Constitution: present|'
+echo '{bad' > "$H/.claude/persona-config.json"
+want "(l2-b2) unreadable" "$(hdr "$H")" 'Review gating: enforce|Constitution: present|'
+want "(l2-b3) present" "$(hdr "$H" | grep -o 'Constitution: [a-z]*')" 'Constitution: present'
+rm "$H/.claude/constitution.md"
+want "(l2-b3) absent" "$(hdr "$H" | grep -o 'Constitution: [a-z]*')" 'Constitution: absent'
+mkrepo() { rm -rf "$T/r$1"; mkdir "$T/r$1"; ( cd "$T/r$1" && git init -q . && for i in $(seq "$2"); do seq "$3" > "f$i"; done && git add . && g commit -q -m x ); }
+mkrepo 3 3 5; want "(l2-b4) 3 files" "$(cd "$T/r3" && bash "$UB" repo)" 'repo: small files=3 lines=15'
+mkrepo 11a 11 200; want "(l2-b5) 11 files 2200 lines" "$(cd "$T/r11a" && bash "$UB" repo)" 'repo: large files=11 lines=2200'
+mkrepo 11b 11 50; want "(l2-b5) 11 files 550 lines" "$(cd "$T/r11b" && bash "$UB" repo)" 'repo: small files=11 lines=550'
+mkdir -p "$T/nogit"; want "(l2-b6) outside git" "$(cd "$T/nogit" && GIT_CEILING_DIRECTORIES="$T" bash "$UB" repo)" 'repo: large files=0 lines=0'
+
 exit "$fail"

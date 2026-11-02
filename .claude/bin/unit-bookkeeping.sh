@@ -5,13 +5,14 @@
 # The header names the implementer tier only from that flag; no tier is stored. Never deletes anything.
 # check <unit> <baseline> [--contract <path>]: the small-lane check that replaces the reviewer (rules C1-C8).
 # flag <defer|skip> <reason>: puts "<kind>: <reason>" first in every existing pending-review flag.
+# repo: prints "repo: small|large files=<n> lines=<n>" for the tracked files outside .claude and docs/plans.
 dir="$(cd "$(dirname "$0")" && pwd)"
 state="${CLAUDE_PROJECT_DIR:-$PWD}/.claude"
 ledger="$state/orchestrator-rulings.log"
 bk="$state/bookkeeping"
 unit_re='^[A-Za-z0-9][A-Za-z0-9._#-]{0,63}$'
 
-usage() { echo "usage: unit-bookkeeping.sh dispatch <unit> [--contract <path>] | review <unit> <baseline> [--implementer-tier <t>] | check <unit> <baseline> [--contract <path>] | flag <defer|skip> <reason>" >&2; exit 2; }
+usage() { echo "usage: unit-bookkeeping.sh dispatch <unit> [--contract <path>] | review <unit> <baseline> [--implementer-tier <t>] | check <unit> <baseline> [--contract <path>] | flag <defer|skip> <reason> | repo" >&2; exit 2; }
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 ruling() { mkdir -p "$state"; echo "RULING $(ts) unit=$1 decision=$2" >> "$ledger"; }
 
@@ -71,6 +72,12 @@ review_header() {
   case "$tier" in haiku|sonnet|opus) echo "Implementer tier: $tier" ;; esac
   echo "Range: $(git rev-parse "$base^{commit}")..$(git rev-parse HEAD)"
   echo "Reviewer model: $word"
+  if [ "$(jq -r '.reviewGating.mode // "enforce"' "$state/persona-config.json" 2>/dev/null)" = off ]; then
+    echo "Review gating: off"
+  else
+    echo "Review gating: enforce"
+  fi
+  if [ -f "$state/constitution.md" ]; then echo "Constitution: present"; else echo "Constitution: absent"; fi
   echo "Changed files:"
   git diff --name-only "$base..HEAD" | sed 's/^/- /'
 }
@@ -211,7 +218,17 @@ flag_cmd() {
   [ "$n" -gt 0 ]
 }
 
+repo_cmd() {
+  local top n l
+  top="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "repo: large files=0 lines=0"; return 0; }
+  n="$(cd "$top" && git ls-files -- . ':(exclude).claude' ':(exclude)docs/plans' | wc -l | tr -d ' ')"
+  l="$(cd "$top" && git ls-files -z -- . ':(exclude).claude' ':(exclude)docs/plans' | xargs -0 -r cat 2>/dev/null | wc -l | tr -d ' ')"
+  case "$n$l" in ''|*[!0-9]*) echo "repo: large files=0 lines=0"; return 0 ;; esac
+  if [ "$n" -le 10 ] || [ "$l" -lt 1000 ]; then echo "repo: small files=$n lines=$l"; else echo "repo: large files=$n lines=$l"; fi
+}
+
 case "${1:-}" in
+  repo) repo_cmd ;;
   check) check_cmd "$@" ;;
   flag) flag_cmd "$@" ;;
   dispatch) dispatch_cmd "$@" ;;
