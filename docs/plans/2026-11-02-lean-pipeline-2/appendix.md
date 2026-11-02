@@ -21,6 +21,11 @@
 - 2026-11-01 Technical constraints & tradeoffs: Q Slim tier or trimmed full tier for reviewer and lead-programmer? → A (self-resolved): trimmed full tier; the slim body lacks the marker, FAIL record and contract sections both need (D2)
 - 2026-11-01 Technical constraints & tradeoffs: Q Which preloaded skill can go? → A (self-resolved): the reviewer's ubiquitous-language (advisory output only); the lead-programmer keeps both (D2)
 - 2026-11-01 Technical constraints & tradeoffs: Q Where do the orchestrator's bytes for item 5 come from? → A (self-resolved): two unpinned cuts, net about -50 bytes (unit 6)
+- 2026-11-01 Functional scope & success criteria: Q Does "item 8" mean the H4 warning or the harness fixes? → A: both, units 7 and 8 (user, Open Question 1)
+- 2026-11-01 Edge cases / failure handling: Q Commit or ignore the untracked `eval/reports/`? → A: committed in 90a3a5b2 (user, Open Question 2); its Risks and recommendation text removed
+- 2026-11-01 Edge cases / failure handling: Q Stop-gate hardening (a)-(d) now or later? → A: (a)-(c) now as opus full-lane units after l2-ports; (d) accepted as the known residual (user, Open Question 3)
+- 2026-11-01 Functional scope & success criteria: Q Were the four rules the lp-orch cut deleted intended? → A: yes (user); dropped from the plan
+- 2026-11-01 Technical constraints & tradeoffs: Q One hardening unit or two? → A (self-resolved): two; (a) and (c) are both in `stop-gate-core.sh` rule 5-6 (l2-sg1), (b) is in `dispatch-hygiene.sh` (l2-sg2), so (a) and (b) do not share code
 - 2026-11-01 Terminology consistency: Q Is "small repo" a new term next to "unit lane"? → A (self-resolved): yes, a harness term for `docs/harness-glossary.md` (unit 15), distinct from the small lane
 
 ## Constitution check (.claude/constitution.md v1.2.0)
@@ -34,11 +39,13 @@
 - CHK1: Does every Goal clause map to a unit? — PASS (G1:1, G2:2, G3:3+6, G4:3+4+5, G5:7+8, G6:9-15, release 16)
 - CHK2: Do D5 and unit 5 agree that the reviewer still runs the precheck and every deferred criterion itself? — PASS
 - CHK3: Is the item-4 claim "no behavioural rule lost" backed by per-section evidence? — PASS (D3 table, cited lines)
-- CHK4: Is item 8's meaning unambiguous? — FAIL (ambiguous) — converted to Open Question 1
+- CHK4: Is item 8's meaning unambiguous? — FAIL (ambiguous) — converted to Open Question 1 (answered 2026-11-01: both)
 - CHK5: Do any two units edit the same file without an order? — PASS (reviewer.md 1→2→5; unit-bookkeeping.sh 3→11; review-precheck.test.sh 4→12; CHANGELOG serial)
 - CHK6: Is the orchestrator byte budget defined for unit 6? — PASS (adds about 110, cuts about 162; criterion at or below 16,384)
-- CHK7: Will small-lane units in this clone pass `check`? — FAIL (missing) — converted to Open Question 2
+- CHK7: Will small-lane units in this clone pass `check`? — FAIL (missing) — converted to Open Question 2 (answered 2026-11-01: committed)
 - CHK8: Is each excluded follow-up named with where it went? — PASS (Risks, Open Question 3)
+- CHK10: Does each hardening change fail closed when its own write or check fails? — PASS (10a: replace, then create, then block; 10b: no touch on exit 2 or a crash)
+- CHK11: Do 10b and unit 8 edit `dispatch-hygiene.sh` in a defined order? — PASS (8 before 10b)
 - CHK9: Do the units avoid `:NN` and brace forms in Affected files before unit 12? — PASS (D9)
 
 ## Follow-ups already fixed (verified at 127e22b1)

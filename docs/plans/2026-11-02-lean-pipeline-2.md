@@ -16,9 +16,9 @@ of the lean-pipeline and reviewer-by-lane plans. After this plan:
   its dispatch header, gets the blast radius from the precheck it runs, and runs the full suite once. It
   still runs the precheck and every deferred criterion itself.
 - G5 (item 8). e03 and e05 accept `CONTEXT.md`, and a run whose only stall cause is a permission denial
-  scores `run_pass` true when every required check passes. Unit l2-h4 is conditional (Open Question 1).
-- G6. The follow-ups that are still open and need no new design are closed (units 9-15). The rest are
-  listed under Risks. The work ships as 0.34.0.
+  scores `run_pass` true when every required check passes. Unit l2-h4 drops the H4 size warning.
+- G6. The follow-ups that are still open and need no new design are closed (units 9-15), and stop-gate
+  hardening (a)-(c) lands (units 10a, 10b). The rest are under Risks. The work ships as 0.34.0.
 
 ## Decisions
 
@@ -29,9 +29,8 @@ of the lean-pipeline and reviewer-by-lane plans. After this plan:
   its 25 first-in-run dispatches hit an entry written by the previous run's reviewer, 14 of them more than
   300 s later (up to 1,642 s); 5m loses those. Net saving about $10.1 - 14 x 23.8K x $12.25/MTok ($4.1) =
   $6.0 over 25 runs (about 4.7% of Arm B, not 8%). The cross-run hits come from back-to-back eval runs.
-  The persona tail (about 12K tokens) missed in 43 of 43 dispatches under 1h too. Decision: drop it as
-  asked. Pins: only `tests/validate.sh:277-290`, which requires the 1h nesting; it becomes a check that the
-  reviewer frontmatter has no `cacheTtl` at all. Adapters carry none.
+  The 12K persona tail missed 43 of 43 times under 1h too. Decision: drop it. Only pin:
+  `tests/validate.sh:277-290`. Adapters carry none. The 2.1.248 floor and its stated reasons stay (Risks).
 - **D2 Item 4, the least risky cut.** Keep both personas on the full protocol tier (the slim tier lacks
   marker format, FAIL record and dispatch contract) and drop whole sections from their rows of
   `PROTOCOL_SECTIONS_BY_PERSONA` in `bin/cli.js`. `assertNoDanglingCrossReferences` and
@@ -60,8 +59,8 @@ of the lean-pipeline and reviewer-by-lane plans. After this plan:
 | Continuing after a FAIL (1,929) | **drop**: addressed to the re-delegator and the cap owner; LP's FAIL rule is body :118-119, fix turns :43-50, memory :17-24 and :41-42 | dropped already |
 | A note on `memory` (1,257) | keep (`memory: project`) | dropped already |
 
-  Expected deployed sizes: lead-programmer 29,325 → about 24,900 bytes; reviewer 45,799 → about 42,100,
-  plus about 3,500 bytes less preloaded at dispatch.
+  Deployed: lead-programmer 29,325 → about 24,900 bytes; reviewer 45,799 → about 42,100, and 3,500 less
+  preloaded.
 - **D4 Item 5.** New `unit-bookkeeping.sh repo` prints `repo: small files=<n> lines=<n>` when the tracked
   files outside `.claude/` and `docs/plans/` number 10 or fewer or hold fewer than 1,000 lines, else
   `repo: large ...`; anything it cannot measure is `large`. The orchestrator skips the explorer in the
@@ -81,14 +80,8 @@ of the lean-pipeline and reviewer-by-lane plans. After this plan:
   `tests/abtest-arms.test.sh` pins none of this and is not touched. Old rows are not edited: every row
   carries `harness_commit` = HEAD, so the next run of `run-matrix.sh` moves them to
   `results.superseded.jsonl` itself.
-- **D7 Follow-ups kept.** Verified open at 127e22b1: stop-gate-core.sh:48 message; protocol "overwrite a
-  flag" (`flag` prepends) and "so its fix gets the reviewer" (the `fail`/`escalate`/no-line list is already
-  complete; the flag case is missing); rv-routemark failed-rewrite test and mktemp 0600 mode; exported
-  `writer_lane` on the ports and a tool_use_id join test; unused `prompt` extraction in both adapter route
-  gates; `..` contract paths and index flags in `check`; precheck `:NN` and `{a,b}` scope entries; trust
-  row 20 and the reviewed-path-gate.sh:95 refusal (DECISION channel); marker-write.test.sh testing a local
-  copy; code-bin check (d); CHANGELOG "case 25"; the knowledge text in unit 15. Already fixed: appendix
-  list. The reviewer-by-lane plan's D5 wording is amended there by this commit (no contract change).
+- **D7 Follow-ups.** Each was verified open at 127e22b1 and maps to units 5, 9-15 (the fixed ones are in
+  the appendix). The reviewer-by-lane plan's D5 wording is amended there by this commit.
 - **D8 Lanes and order.** Lanes are `unit-size.sh`'s output. l2-ckhard edits `check` itself
   (prior FAILs qw-u1, rv-harden2): dispatch it with `--at-least medium` so it gets the reviewer. Every
   unit that edits `bin/unit-bookkeeping.sh` or `bin/review-precheck.sh` starts at sonnet (qw-u1, st-u2
@@ -113,9 +106,11 @@ mirrors are extra. Each unit's last criterion is `bash tests/validate.sh` once a
 | 5 | l2-revprose | 4 | full | sonnet | 2, 3, 4 |
 | 6 | l2-orch | 4 | full | sonnet | 3 |
 | 7 | l2-abfix | 7 | medium | sonnet | - |
-| 8 | l2-h4 | 3 | full | haiku | OQ1 |
+| 8 | l2-h4 | 3 | full | haiku | - |
 | 9 | l2-gatemsg | 5 + 4 regenerated | full | sonnet | - |
 | 10 | l2-ports | 6 | full | sonnet | 9 |
+| 10a | l2-sg1 | 5 + 4 regenerated | full | opus | 9, 10 |
+| 10b | l2-sg2 | 3 | full | opus | 8, 10a |
 | 11 | l2-ckhard | 3 | small, lifted to medium (D8) | sonnet | 3 |
 | 12 | l2-scope | 3 | full | sonnet | 4 |
 | 13 | l2-retired | 4 | full | sonnet | - |
@@ -126,10 +121,8 @@ mirrors are extra. Each unit's last criterion is `bash tests/validate.sh` once a
 Dispatch in table order, one unit at a time.
 
 ### 1. l2-ttl: drop the reviewer's 1h cache TTL (item 2)
-Files: `agents/reviewer.md` (delete the `experimental:` line and its `  cacheTtl: 1h` line),
-`tests/validate.sh` (the 277-290 block: FAIL when `agents/reviewer.md` has a `cacheTtl` line at any
-indent, else OK; label "reviewer: no cacheTtl (5m default, l2-ttl)"), `CHANGELOG.md` with D1's figures.
-The compatibility floor (2.1.248) and its stated reasons stay (Risks).
+Files: `agents/reviewer.md` (delete `experimental:` and `  cacheTtl: 1h`), `tests/validate.sh` (277-290:
+FAIL when the file has a `cacheTtl` line at any indent), `CHANGELOG.md` with D1's figures.
 
 ### 2. l2-slim: inline only the needed sections (item 4, highest risk)
 Files: `bin/cli.js` (lead-programmer row: Structural questions and Continuing after a FAIL move to `drop`,
@@ -146,18 +139,15 @@ below 25,200 (LP) and 42,500 (reviewer), `--update --force-render` succeeds, and
 line still says to follow a preloaded ubiquitous-language skill.
 
 ### 3. l2-bkhdr: review header lines and `repo` (items 5, 6 tooling)
-Files: `bin/unit-bookkeeping.sh`, `tests/unit-bookkeeping.test.sh`, `CHANGELOG.md`. `review_header` prints
-`Review gating: off` exactly when `jq -r '.reviewGating.mode // "enforce"'` on the project's
-`persona-config.json` prints `off`, else `Review gating: enforce`; then `Constitution: present` when
-`.claude/constitution.md` exists, else `absent`; both after `Reviewer model:`. New `repo` subcommand per
-D4 (exit 0; `usage` lists it). Tests: mode off, absent key, unreadable config; constitution both ways;
-`repo` on a 3-file repo, an 11-file 2,000-line repo, an 11-file 50-line repo, and outside git (`large`).
+Files: `bin/unit-bookkeeping.sh`, `tests/unit-bookkeeping.test.sh`, `CHANGELOG.md`. After `Reviewer
+model:` the header prints `Review gating: off` exactly when the reviewer's jq rule reads `off` (else
+`enforce`), then `Constitution: present|absent`. `repo` per D4. Tests cover each value and `repo` on 3
+files, 11 files of 2,000 lines, 11 files of 50 lines, and outside git.
 
 ### 4. l2-prebr: `review-precheck.sh --blast-radius` (item 6 tooling)
-Files: `bin/review-precheck.sh`, `tests/review-precheck.test.sh`, `CHANGELOG.md`. The flag appends, after
-every other packet line, `br ` plus each line of `bash <dir>/blast-radius.sh <baseline>`; a missing or
-failing script gives `br blast-radius: unavailable`. Without the flag the packet is byte-identical (test
-compares). `--criterion` with `--blast-radius` is usage error 2.
+Files: `bin/review-precheck.sh`, `tests/review-precheck.test.sh`, `CHANGELOG.md`. The flag appends `br `
+plus each line of `blast-radius.sh <baseline>` last (`br blast-radius: unavailable` if it fails). Without
+the flag the packet is byte-identical; with `--criterion` it is usage error 2.
 
 ### 5. l2-revprose: reviewer routine and protocol wording (item 6, follow-up B2)
 Files: `agents/reviewer.md`, `templates/persona-protocol.md`, `tests/blast-radius.test.sh`, `CHANGELOG.md`.
@@ -201,7 +191,7 @@ scores a row `stalled-human` gains D6's exception), `tests/abtest-row.test.sh`,
 `eval/abtest/results.jsonl`, `results.superseded.jsonl`, `eval/reports/` and `tests/abtest-arms.test.sh`
 are not touched.
 
-### 8. l2-h4: drop the H4 size warning (literal item 8; only if Open Question 1 says so)
+### 8. l2-h4: drop the H4 size warning (literal item 8)
 Files: `hooks/scripts/dispatch-hygiene.sh` (delete the `prompt_bytes -gt 3072` warning and its header
 comment line; H1's `maxPromptBytes`, default 30,000, still bounds prompts), `tests/dispatch-hygiene.test.sh`
 (T49c: a 3,073-byte five-field prompt exits 0 with no `H4` on stderr and no `warned=H4-size`),
@@ -226,6 +216,31 @@ sets `writer_lane=""` just before sourcing the core, so an exported variable is 
 `adapters/codex/hooks/scripts/reviewer-route-gate.sh`, `adapters/cursor/hooks/scripts/reviewer-route-gate.sh`
 (delete the unused `prompt="$(...)"` line, :60), `tests/adapter-stop-gate-parity.test.sh` (`(l2-p1)` per
 port: with `writer_lane=small` exported, a gated writer stop still writes the flag), `CHANGELOG.md`.
+
+### 10a. l2-sg1: stop-gate hardening (a) and (c), fail closed
+Files: `hooks/scripts/lib/stop-gate-core.sh`, `hooks/scripts/lib/state-access.sh`, `tests/stop-gate.test.sh`,
+`tests/state-access-constraints.test.sh`, `CHANGELOG.md`; adapter copies regenerated. (a) On a gated
+SubagentStop the D6 marker check runs before the WIP sentinel. On a trip the sentinel is deleted, not
+honoured, and logged `<ts> wip-ignored d6-trip agent=<id>` to `wip-audit.log`; rule 6 then writes the flag
+and blocks. Untripped, the sentinel works as today. (c) New `state_replace_pending_review` writes the flag
+through a `mktemp` file in the dot-dir, `chmod 644`, `mv -f`, so an existing file or symlink at the flag
+path is replaced, never kept or followed; rule 6 uses it. If that fails, it `rm -f`s the path and creates
+the file; if that fails too, the stop blocks naming the path. `state_write_pending_review` and its
+CONSTRAINT 3 test stay. Adversarial tests: `(l2-s1)` forged `.pass` newer than the stamp plus a non-empty
+sentinel → rc 2, flag present, sentinel gone, log line; `(l2-s2)` sentinel alone → rc 0, no flag; `(l2-s3)`
+a pre-made `skip: x` flag → replaced, and the main Stop blocks; `(l2-s4)` the flag path a symlink to an
+outside file → target unchanged, flag a regular file, mode 644; `(l2-s5)` an untripped small-lane stop
+still writes none; `(l2-s6)` the reviewer's stop still clears every flag.
+
+### 10b. l2-sg2: writer-dispatch stamp only on an allowed dispatch (b)
+Files: `hooks/scripts/dispatch-hygiene.sh`, `tests/dispatch-hygiene.test.sh`, `CHANGELOG.md`. Today
+`dispatch-hygiene.sh:177-179` touches the stamp before any check, so a blocked dispatch moves it later and
+a marker forged earlier stops tripping D6. The gated-target match now only sets a variable; an `EXIT`
+trap touches the stamp when the hook exits 0 (mode off, override, warn, no check fired), never on exit 2
+or a crash (a stale stamp trips more, fail closed). Adversarial tests: `(l2-d1)` a gated dispatch blocked
+by H4 leaves the stamp's mtime unchanged; `(l2-d2)` an allowed one touches it; `(l2-d3)` mode off and an
+override each touch it; `(l2-d4)` a forged marker, then a blocked dispatch, then the writer's stop →
+`stop-gate.sh` rc 2; `(l2-d5)` a non-gated target never touches it. After l2-h4 (same file).
 
 ### 11. l2-ckhard: two `check` gaps (rv-harden2 notes)
 Files: `bin/unit-bookkeeping.sh`, `tests/unit-bookkeeping.test.sh`, `CHANGELOG.md`. In `check_declared`, a
@@ -255,9 +270,8 @@ registered only for A/B harness parity. A test pins the new refusal and that it 
 Files: `tests/marker-write.test.sh` (check markers with `hooks/scripts/task-gate.sh`'s own
 `marker_valid`, extracted by `sed -n '/^marker_valid() {/,/^}/p'` and sourced, instead of the local copy;
 the "staying BLOCKED above" comment says the gates allow Bash since 0.32.0),
-`tests/escalation-retired.test.sh` (check (d) reads the whole `BIN_HELPER_FILES` array, from its `const`
-line to the first `];`), `CHANGELOG.md` (the 0.32.0 bullet's "the comment sections (case 25)" →
-"the two comment sections (both case 25)").
+`tests/escalation-retired.test.sh` (check (d) reads the whole `BIN_HELPER_FILES` array, `const` line to
+`];`), `CHANGELOG.md` ("the comment sections (case 25)" → "the two comment sections (both case 25)").
 
 ### 15. l2-scribe: knowledge text
 Files: `CONTEXT.md` ("Arm A / Arm B": the Bash gate relaxation is a no-op since 0.32.0; the DECISION
@@ -271,32 +285,24 @@ the agent-memory notes that name `benign-command.sh`, `command_skeleton` or `men
 `git grep -l` over `.claude/agent-memory`): one line each saying the file or function was deleted in 0.32.0.
 
 ### 16. l2-release: 0.34.0
-Files: `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`, plus what `node bin/cli.js --update`
-re-stamps. One commit, 0.33.0 → 0.34.0, `## [0.34.0] - <date>` below `## [Unreleased]`. After l2-scribe.
+Files: `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`, and `--update` re-stamps. One commit,
+0.33.0 → 0.34.0, `## [0.34.0] - <date>` below `## [Unreleased]`.
 
 ## Risks
 
 - **Item 4 can change behaviour.** The table rests on each persona's own text; a teammate reviewer never
   had Write/Edit either.
-- **Item 2.** A reviewer resumed after INSUFFICIENT-CONTEXT more than 5 minutes later re-writes its whole
-  context (about 50K tokens, $0.6); the corpus had none. The floor text (`plugin.json`, install skill) still
-  names `cacheTtl` as one reason for 2.1.248; lowering the floor is a separate compatibility decision.
-- **Small units in this clone.** Untracked `eval/reports/` makes every `check` fail `uncommitted`, so
-  units 3, 4, 14 and 15 move to medium and get the reviewer until it is committed or ignored (OQ2).
+- **Item 2.** A reviewer resumed over 5 minutes after INSUFFICIENT-CONTEXT re-writes about 50K tokens
+  ($0.6); the corpus had none. `plugin.json` and the install skill still name `cacheTtl` as a floor reason.
 - **l2-scope widens the scope gate's listed set** to what authors meant; a brace list naming a sensitive
   path makes the unit heavier, never lighter.
 - **l2-ckhard** escalates every small unit in a sparse checkout (skip-worktree bits); fails closed.
-- **Not done (needs a decision, OQ3):** stop-gate hardening from the lp-stopgate review: (a) the D6 marker
-  check runs after a non-empty WIP sentinel is honoured (stop-gate-core.sh:90-110), so a forged marker plus
-  a sentinel evades it; (b) `dispatch-hygiene.sh:177-179` touches the writer-dispatch stamp before the
-  dispatch is allowed; (c) a writer stop creates its flag only if absent (state-access.sh:104), so a
-  pre-made `skip:` flag survives; (d) a writer can `rm` its own flag. Also left: the `Mode: advisory`
-  convention has no mechanical reader (pinned by `tests/reviewer-dispatch-line-order.test.js`);
-  `agents/spec-master.md:190-211` still shows `## Self-check` in the plan template.
-- **Needs the user, carried from lp-orch:** the orchestrator cut deleted four rules without a CHANGELOG
-  line (forwarding an external run journal to the reviewer, the no-scribe fallback, naming nested
-  debug-spec dispatches, the issue-body guard for no-contract units). Lost with `decisions.js`: the plan
-  excerpt browser, the milestone-auditor paste-back, the defer/skip composer.
+- **Accepted residual (user, 2026-11-01):** a writer can `rm` its own flag before its stop; the stop
+  rewrites it (unit 10a), but not when the writer's Bash removes it after its last stop.
+- **Left, no decision needed:** the `Mode: advisory` convention has no mechanical reader (pinned by
+  `tests/reviewer-dispatch-line-order.test.js`); the views lost with `decisions.js` (plan excerpt
+  browser, milestone-auditor paste-back, defer/skip composer); `agents/spec-master.md:190-211` still shows
+  `## Self-check` in the plan template.
 
 ## Recommendations (not built)
 
@@ -304,18 +310,12 @@ re-stamps. One commit, 0.33.0 → 0.34.0, `## [0.34.0] - <date>` below `## [Unre
   Then run `--policy shipped` into the same results file as a second matrix: subagent spend is 73% of Arm
   B and the shipped ladder (haiku/sonnet writers, sonnet/opus reviewer) is what users run. Report the two
   policies separately; `score.py` already splits by policy.
-- `eval/reports/` is the user's output: commit it (it documents the 0.33.0 baseline) or add it to
-  `.gitignore`; either ends the `uncommitted` escalations.
 
 ## Open Questions
 
-1. "Item 8" in the investigation's Q4 table is the H4 size warning; the harness fixes are row 9 (and the
-   shipped-policy run row 10). Recommended default: do both (units 7 and 8). Options: both; harness
-   fixes only (drop unit 8); H4 only (drop unit 7).
-2. `eval/reports/` (untracked): recommended default: you commit it before dispatch. Options: commit it;
-   add it to `.gitignore`; leave it (small units get the reviewer).
-3. Stop-gate hardening (a)-(d) in Risks: recommended default: a later plan, so this one stays free of
-   gate-semantics changes. Options: later plan; add (a)-(c) as units here (opus, full lane).
+None open. The user answered on 2026-11-01: (1) do both units 7 and 8; (2) `eval/reports/` is committed
+(90a3a5b2), so small-lane checks see a clean tree; (3) hardening (a)-(c) as units 10a and 10b, (d)
+accepted (Risks). The four rules the lp-orch cut deleted were intended.
 
 ## Dispatch
 
