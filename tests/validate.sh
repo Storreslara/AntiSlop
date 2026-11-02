@@ -274,18 +274,13 @@ done
 rm -f "$frontmatter_yaml_err"
 
 echo
-echo "== reviewer: cacheTtl nested under experimental:, not top-level =="
-# Claude Code only recognizes this field under experimental: - a top-level
-# cacheTtl: is silently dropped (see cache-ttl-gapped-personas Defect 1).
+echo "== reviewer: no cacheTtl (5m default, l2-ttl) =="
 for f in agents/reviewer.md; do
-  if grep -qE '^cacheTtl:' "$f"; then
-    echo "FAIL $f (cacheTtl at top level of frontmatter - must nest under experimental:)"
+  if grep -qE '^[[:space:]]*cacheTtl:' "$f"; then
+    echo "FAIL $f (cacheTtl present - l2-ttl dropped it)"
     fail=1
-  elif grep -qE '^experimental:' "$f" && grep -qE '^ +cacheTtl: 1h' "$f"; then
-    echo "OK   $f"
   else
-    echo "FAIL $f (missing experimental:/cacheTtl: 1h nesting)"
-    fail=1
+    echo "OK   $f"
   fi
 done
 

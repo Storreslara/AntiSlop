@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **Reviewer drops the 1h cache TTL (l2-ttl).** `cacheTtl: 1h` removed from `agents/reviewer.md`: it cost about $6.0 of $10.1 over 25 runs and 14 cross-run cache hits were lost; the 5m default applies. `tests/validate.sh` now asserts the field is absent.
+
 ## [0.33.0] - 2026-11-01
 
 - **Reviewer by lane (ADR-0045).** Small-lane units skip the reviewer and are checked by `unit-bookkeeping.sh check`; medium and full units keep it, with a flag channel, lane records and routing gates as listed below.
