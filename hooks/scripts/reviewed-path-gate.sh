@@ -92,7 +92,7 @@ if [ -z "$agent_type" ] || persona_matches_gate "$agent_type" orchestrator; then
     escalated_markers=( "${project_dir}"/.claude/reviewed/*.escalated )
     shopt -u nullglob
     if [ "${#escalated_markers[@]}" -gt 0 ]; then
-      echo "BLOCKED: this project has a standing .escalated marker with no reviewer persona selected to resolve it. The only route that resolves an escalation is the DECISION channel (per Step 1/#325's gate); if this project has permanently deselected its reviewer with a stale escalation on file, that decision belongs to a human at their own terminal, not to this fallback." >&2
+      echo "BLOCKED: this project has a standing .escalated marker and no reviewer persona selected. The marker is left from a version before 0.32.0, which retired escalation (ADR-0044); nothing resolves it any more, so a human deletes it at their own terminal." >&2
       exit 2
     fi
     exit 0

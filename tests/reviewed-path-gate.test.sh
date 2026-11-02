@@ -145,6 +145,12 @@ echo
 echo "-- gh326: no-reviewer fallback suspended while an escalation stands --"
 write_case "case j  empty agent_type Write, standing escalation" blocked "" \
   "$marker/u9.pass" "$proj_escalated"
+run "$(jq -n '{tool_name:"Write",agent_type:"",tool_input:{file_path:".claude/reviewed/u9.pass"}}')" "$proj_escalated"
+if grep -qF 'before 0.32.0' "$errf" && grep -qF 'own terminal' "$errf" && ! grep -qF DECISION "$errf"; then
+  pass "standing .escalated refusal names the retirement and a human's terminal, no DECISION (l2-r1)"
+else
+  bad "standing .escalated refusal text wrong (l2-r1)"
+fi
 write_case "case l  empty agent_type Write, no escalation standing (fallback preserved)" allowed "" \
   "$marker/u9.pass" "$proj_none"
 write_case "case n  antislop:reviewer Write, standing escalation (GRANT unaffected)" allowed \
