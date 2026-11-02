@@ -1230,4 +1230,21 @@ else
   bad "(l2-d5) expected an unchanged stamp after explorer dispatches (rc=$rc_a/$rc moved=$moved_a)"
 fi
 
+# (rs-s1..3) a TERM, INT or HUP at the mode read never moves the writer-dispatch stamp
+shimdir="$tmproot/rs-shim"; mkdir -p "$shimdir"
+printf '#!/bin/bash\ncase "$*" in *dispatchHygiene.mode*) kill -$SIG $HYG_PID; sleep 0.3;; esac\nexec %s "$@"\n' "$(command -v jq)" > "$shimdir/jq"
+chmod +x "$shimdir/jq"
+n=0
+for sig in TERM INT HUP; do
+  n=$((n + 1))
+  dir="$(stamp_project rss$n '{"mode":"warn"}')"
+  (payload lead-programmer 'do it' | SIG="$sig" PATH="$shimdir:$PATH" CLAUDE_PROJECT_DIR="$dir" \
+    bash -c 'export HYG_PID=$$; exec bash hooks/scripts/dispatch-hygiene.sh' >/dev/null 2>&1) || true
+  if ! stamp_moved "$dir"; then
+    ok "(rs-s$n) a $sig at the mode read leaves the writer-dispatch stamp unchanged"
+  else
+    bad "(rs-s$n) a $sig moved the stamp"
+  fi
+done
+
 exit "$fail"

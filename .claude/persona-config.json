@@ -53,7 +53,7 @@
     ".claude/persona-protocol.md": "6caf3ac85bfd411310923ea4593dc0ab3288fc7347f0827c6a49fdcc6fd894c0",
     ".claude/persona-protocol-slim.md": "50097da04ad6a95d21b1acc6f761bcbd7042cd3a8aeea0cbb5d4b71062119c67",
     ".claude/protocol-digest.md": "54e06b78fd81cddc46045f2c7b701dba182d4a66e23497ddf1d9da4bc4f8b110",
-    ".claude/hooks/scripts/dispatch-hygiene.sh": "677b9706c6a69627291d6ea4f7e44ce52a075b0e3f658a3d2b77d6ffd954acf5",
+    ".claude/hooks/scripts/dispatch-hygiene.sh": "2aba7acd29b48d45f43e28265ba86ef7b3981c1ef4318312dd64b14dfa24384c",
     ".claude/hooks/scripts/graph-update.sh": "a543070d6c0dd4a28b71feab85853af60c0e082dab21b0c1fd44f8106d169ed4",
     ".claude/hooks/scripts/lib/agent-identity.sh": "0de4d93b4a1cefb79c534328d242b884f0869198ceacdda02ccb3e579d857975",
     ".claude/hooks/scripts/lint-on-edit.sh": "b1db05986d2c553e32234934a524936b741f6fc3dab90eb0588e9c6d24f722d0",

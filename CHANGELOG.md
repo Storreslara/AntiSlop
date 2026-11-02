@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **A signal never moves the writer-dispatch stamp (rs-stamp).** `dispatch-hygiene.sh` traps TERM, INT and HUP to clear the stamp-due flag and exit 143, 130 and 129, so the EXIT trap cannot touch `.writer-dispatch-stamp` after a signal. Pins `(rs-s1)` to `(rs-s3)` in `tests/dispatch-hygiene.test.sh`.
+
 ## [0.34.0] - 2026-11-02
 
 - **Release 0.34.0: lean pipeline 2 (plan 2026-11-02-lean-pipeline-2, l2-release).** Trims the reviewer and lead-programmer protocol, gives the review header gating and repo size, hardens the stop and scope gates, and retires `.escalated`; the entries below are the units.

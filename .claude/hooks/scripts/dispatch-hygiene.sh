@@ -33,7 +33,7 @@
 #     target (default lead-programmer) that the hook allows (exit 0: mode off,
 #     override, replay, warn, no check fired) also touches
 #     .claude/reviewed/.writer-dispatch-stamp for stop-gate.sh's marker check,
-#     from an EXIT trap; exit 2 or a crash leaves it unchanged (fail closed).
+#     from an EXIT trap; exit 2, a crash or a TERM, INT or HUP signal leaves it unchanged (fail closed).
 #  1).claude/.dispatch-override sentinel -> honored only when its content
 #     starts with "override: " (logged, deleted, exit 0). An empty or
 #     reason-less sentinel is deleted but NOT honored, falling through to the
@@ -172,7 +172,7 @@ if [ -n "$bl_target" ] && [[ $bl_tu =~ ^[A-Za-z0-9_]{1,128}$ ]] \
   fi
 fi
 # Writer-dispatch stamp: stop-gate.sh blocks a gated writer's stop when a verdict marker is newer.
-# Touched by the EXIT trap only on exit 0, so a blocked dispatch or a crash leaves it (fail closed).
+# Touched by the EXIT trap only on exit 0, so a blocked dispatch, a crash or a TERM/INT/HUP signal leaves it (fail closed).
 sg_stamp_due=0
 sg_exit() {
   local rc=$?
@@ -183,6 +183,9 @@ sg_exit() {
   exit "$rc"
 }
 trap sg_exit EXIT
+trap 'sg_stamp_due=0; exit 143' TERM
+trap 'sg_stamp_due=0; exit 130' INT
+trap 'sg_stamp_due=0; exit 129' HUP
 sg_target="$(echo "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)"
 sg_gated="$(jq -r '.gatedAgents[]? // empty' "$config" 2>/dev/null || true)"
 [ -n "$sg_gated" ] || sg_gated="lead-programmer"
