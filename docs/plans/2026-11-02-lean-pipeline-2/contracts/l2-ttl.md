@@ -32,7 +32,11 @@ No tracker issue; spec in `docs/plans/2026-11-02-lean-pipeline-2.md`, unit 1.
    exit: 0
    stdout: empty
    mutation: leave `.claude/agents/reviewer.md` uncommitted after the refresh → exit 1.
-5. run: `o=$(bash tests/validate.sh 2>&1); r=$?; grep -A1 -F '== reviewer: no cacheTtl' <<<"$o" | tail -1; exit $r` (Bash tool timeout 600000 ms; once, after the final commit)
+5. run: `grep -cE 'no cacheTtl \(5m default, l2-ttl\)|cacheTtl present - l2-ttl dropped it' tests/validate.sh`
    exit: 0
-   stdout: `OK   agents/reviewer.md`
-   mutation: put `  cacheTtl: 1h` back under `model:` → stdout `FAIL agents/reviewer.md (cacheTtl present - l2-ttl dropped it)`, exit 1.
+   stdout: `2`
+   mutation: remove the `no cacheTtl` guard block from `tests/validate.sh` → stdout `0`, exit 1.
+6. run: `bash tests/validate.sh >/dev/null 2>&1` (long, deferred; Bash tool timeout 600000 ms; once, after the final commit)
+   exit: 0
+   stdout: empty
+   mutation: put `  cacheTtl: 1h` back under `model:` in `agents/reviewer.md` → the guard sets `fail=1`, exit 1.
