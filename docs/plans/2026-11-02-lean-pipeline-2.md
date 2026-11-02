@@ -184,9 +184,10 @@ most 40,960.
 ### 7. l2-abfix: A/B fixture and scoring (item 8)
 Files: `eval/abtest/fixtures/e03-rename-query/allowed-paths.txt`,
 `eval/abtest/fixtures/e05-tags-feature/allowed-paths.txt` (each gains the line `CONTEXT.md`),
-`eval/abtest/lib/make-row.py` (D6), `eval/abtest/README.md` (the sentence at about :107 that any denial
+`eval/abtest/lib/make-row.py` (D6), `eval/abtest/README.md` (the sentence at :107 that any denial
 scores a row `stalled-human` gains D6's exception), `tests/abtest-row.test.sh`,
-`tests/fixtures/abtest/row/summary-denied.json`, `CHANGELOG.md`. Tests: denial-only plus all checks →
+`tests/fixtures/abtest/row/summary-denied.json`, `CHANGELOG.md`; follow-up: `eval/abtest/lib/stream.py`,
+`tests/abtest-stream.test.sh` (emits `is_error`, `exit_code`; overrides D6's stream.py clause). Tests: denial-only plus all checks →
 `[True, 'complete']`; denial-only plus one failed check → `[False, 'stalled-human']`; denial plus an ask
 → stalled; the existing "a stall fails the run with every check passing" case is unchanged.
 `eval/abtest/results.jsonl`, `results.superseded.jsonl`, `eval/reports/` and `tests/abtest-arms.test.sh`
