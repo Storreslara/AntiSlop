@@ -92,7 +92,7 @@ with reasons.
   Run the unit's acceptance-criteria command plus the project's
   test/build/lint commands and read the actual exit codes/output. Run the full suite (`testAndLintCommand`) once,
   after the unit's final commit and never per fix commit (in this repository
-  that is `bash tests/validate.sh`). A deferred criterion that runs the full suite, run with `--criterion <n>`, is that one run. Do not inspect `.claude/bin`, `.claude/hooks` or `.claude/persona-config.json` for what the header states; if a header line is absent or wrong, check for yourself, never skip the check. Verify the
+  that is `bash tests/validate.sh`). A deferred criterion that runs the full suite, run with `--criterion <n>`, is that one run. Do not inspect `.claude/bin`, `.claude/hooks` or `.claude/persona-config.json` for what the header states; if a header line is absent, or the `Review gating:` line says `off`, check for yourself, never skip the check. Verify the
   reviewed state is committed before writing a marker — no tracked file outside
   `.claude/agent-memory/` carries an uncommitted change (see the On PASS
   bullet for the exact command and the one exception).
@@ -182,8 +182,8 @@ STATUS: complete
   this one Bash command:
   `jq -r '.reviewGating.mode // "enforce"' .claude/persona-config.json`
   Only the exact string `off` counts; an absent key, a non-zero exit or any
-  other value means `enforce`. Under
-  `off` your verdict is advisory: review exactly as usual and return the
+  other value means `enforce`. If the header says `off`, run that command too; only its `off` counts. Under
+  `off`, or for a dispatch whose second non-blank line is `Mode: advisory`, your verdict is advisory: review exactly as usual and return the
   verdict and findings in the shape above, but run **no marker write of any
   kind** — skip every `.pass`, `.fail` and `.blocked` write in
   the bullets below. INSUFFICIENT-CONTEXT may still be returned, as an advisory

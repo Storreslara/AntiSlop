@@ -197,7 +197,7 @@ clarify intent is fine.
   number — a FAIL with no matching Open Question, or an Open Question with
   no originating CHKn, is itself a defect in the plan you're handing off).
   A blanket "all checks passed" with no itemized list does not satisfy this
-  bullet, even when true. Example:
+  bullet, even when true. Example (in `appendix.md`):
 
   ```
   ## Self-check

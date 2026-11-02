@@ -77,6 +77,10 @@ for f in agents/reviewer.md .claude/agents/reviewer.md; do
   has "$f" 'your final message is ONLY the verdict block, whose last line is the terminal STATUS line; advisory sections never follow it.'
   hasnot "$f" 'message is ONLY the verdict. PASS'
   has "$f" 'The marker carries no REFUTED defect: when the refutation pass led to this verdict, its REFUTED defects and your reasons live only in the returned message'"'"'s `refutation` advisory section.'
+  has "$f" 'or the `Review gating:` line says `off`, check for yourself'
+  has "$f" 'If the header says `off`, run that command too; only its `off` counts.'
+  has "$f" 'second non-blank line is `Mode: advisory`, your verdict is advisory'
+  hasnot "$f" 'absent or wrong'
   has "$f" 'If none stands and one or more is UNCERTAIN, return INSUFFICIENT-CONTEXT, its `missing:` naming the evidence that would settle each, and the REFUTED ones and your reasons go in the `refutation` advisory section, as in a FAIL;'
 done
 for f in agents/milestone-auditor.md .claude/agents/milestone-auditor.md; do
