@@ -8,6 +8,7 @@
 - **Reviewer attribution by `roast-work` alone (rs-tokens).** `agg.py`, `agg2.py` and `cache.py` map a transcript whose only skill is `antislop:roast-work` to `reviewer`, since the reviewer preloads only that skill since l2-slim; the old pair stays. Pins `(rs-t1)` to `(rs-t3)` in `tests/token-usage.test.sh`, fixture `tests/fixtures/token-usage-roast/`.
 - **Reviewer gating header and `Mode: advisory` (rs-prose).** The reviewer rereads the key when the header says `off`, treats a `Mode: advisory` dispatch as advisory, and `spec-master.md` points its example at `appendix.md`; `persona-prose-pins` pins the phrases in both reviewer copies.
 - **Residual closures recorded in the ADRs, wiki and glossaries (rs-docs).** ADR-0045 and ADR-0046 mark each closed residual with its unit and record the four accepted D2 items; ADR-0046 wording is corrected, the wiki says the human-decision gate is a registered stub, line cites follow the code, and the **advisory dispatch** and **advisory review-join stamp** entries say no hook reads or writes them.
+- **Advisory dispatch glossary entry matches the hooks (rs-gloss).** `docs/harness-glossary.md` no longer says the route gate logs `advisory-dispatch=` or skips the join stamp; `Mode: advisory` is prose the reviewer reads.
 
 ## [0.34.0] - 2026-11-02
 

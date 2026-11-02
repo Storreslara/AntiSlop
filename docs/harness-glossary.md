@@ -3190,9 +3190,8 @@ Retired (0.32.0): its rows lived in the gate's test suite, deleted with the gate
   only: no hook reads it; the reviewer writes no marker for it), immediately
   after the dispatch's `Unit: <id>` first line. Its `Implementer tier: <t>`
   line, when present, goes third (a verdict-owning dispatch has it second).
-  On recognizing this token
-  the route gate writes no [[review-join stamp]], logs
-  `advisory-dispatch=$unit_id` to the review audit log, and exits 0 —
+  The route gate treats it like any reviewer dispatch; the reviewer, on
+  reading the line, returns an advisory verdict and writes no marker —
   distinct from every other reviewer dispatch shape, all of which end in a
   marker file under `.claude/reviewed/`.
 
