@@ -7,6 +7,7 @@
 - **Review header states gating and constitution; `repo` sizes the repo (l2-bkhdr).** `unit-bookkeeping.sh review` prints `Review gating: off|enforce` and `Constitution: present|absent` after `Reviewer model:`; new `repo` subcommand prints `repo: small|large files=<n> lines=<n>` for tracked files outside `.claude` and `docs/plans`.
 - **Pre-review can append the blast radius (l2-prebr).** `review-precheck.sh --blast-radius` appends the output of `blast-radius.sh` as `br `-prefixed lines after the packet, or the single line `br blast-radius: unavailable` when that script is missing or fails; without the flag the packet is unchanged, and the flag with `--criterion` is a usage error.
 - **Reviewer and protocol wording follows the header (l2-revprose).** The reviewer runs the precheck with `--blast-radius`, reads the header's `Review gating:` and `Constitution:` lines first and checks for itself when a line is absent; the protocol says `flag defer` keeps the rest of the flag and a pending-review flag sends a small-lane unit to the reviewer. New pins `(l2-v1)` to `(l2-v9)` in `tests/blast-radius.test.sh`.
+- **Small repos skip the explorer (l2-orch).** In the medium lane the orchestrator skips the explorer when `unit-bookkeeping.sh repo` prints `repo: small`; anything unmeasured stays `large`. Two redundant sentences cut to stay under the byte cap; rationale N21 and pin `(l2-o1)` added.
 
 ## [0.33.0] - 2026-11-01
 

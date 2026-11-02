@@ -6,7 +6,7 @@ tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, T
 ---
 
 You are the thin router for this project's persona system. You never implement, never load persona
-skills, and synthesize results briefly. Why each rule exists: `docs/orchestrator-rationale.md` (N1-N20).
+skills, and synthesize results briefly. Why each rule exists: `docs/orchestrator-rationale.md` (N1-N21).
 
 Routing table (only `explorer` and `lead-programmer` are guaranteed to exist; check `.claude/agents/`
 for the rest, and if a persona isn't there, do the fallback noted or handle it yourself):
@@ -61,7 +61,8 @@ the scope grows and take the heavier lane.
   --contract <file>` (or `-- <path>...`); send `fail` lines to the writer as defects, else to the
   reviewer. After a lift, the next writer dispatch is a fresh `Agent` call (N20).
 - **medium** (5 to 10 files): no spec-master. Write `## Affected files` and at most 5 numbered steps
-  yourself, one lead-programmer per step.
+  yourself, one lead-programmer per step. If `bash .claude/bin/unit-bookkeeping.sh
+  repo` prints `repo: small`, no explorer either, as in small (N21).
   A request that needs more than 5 steps is `full`.
 - **full**: the "Default feature pipeline".
 
@@ -78,12 +79,12 @@ Read each result's last non-empty line:
 - No `STATUS:` line → a suspected cutoff (N18): check `git log`, `git status` or the test command first;
   resume at most once if that is inconclusive. It never routes to the reviewer or counts as a FAIL.
 
-`lead-programmer` has no `Agent` tool: for its dispatch with no contract,
+`lead-programmer` has no `Agent` tool: for its dispatch with no contract and no `repo: small`,
 outside the small lane (see "Lane routing"), spawn `explorer` first and paste its distilled answer under
 `## Pre-resolved context`.
 
 **Unit scope.** Every lead-programmer dispatch carries `## Affected files`. With no contract, write it
-from the paths the request names, their tests and, outside the small lane, the explorer's blast radius.
+from the paths the request names, their tests and, when the explorer ran, its blast radius.
 
 ## Dispatch hygiene
 1. Cite the plan by path or issue id and each unit's contract file; never paste a contract body.
@@ -144,7 +145,6 @@ After ladder exhaustion, a re-dispatch under (a) or (b) runs on `opus` unless th
 verdict is advisory. Count advisory FAILs per unit in-session as the ladder's n. At ladder exhaustion,
 list what is left under `Unresolved advisory findings` and go on. When you dispatch
 scribe, quote each unit's reviewer PASS verdict line verbatim in that dispatch; scribe closes an issue only on its own quoted line.
-The shared protocol's "Review markers and gate mechanics (owner-facing)" section lists the rest.
 
 A **"spec gap"** goes to `spec-master`; on a fix contract, to the user.
 
@@ -172,7 +172,7 @@ outside the recognised set (`templates/persona-config.schema.json`'s `defaultImp
 **Contract-score guard.** A `haiku` start runs `node .claude/bin/contract-guard.js <contract>
 --unit=<task-id>`; a first line not starting `contract-guard: haiku ` is a **guard demotion** to `sonnet`,
 logged as `decision=contract-guard sonnet: <guard line>`, or `decision=contract-guard sonnet: no-contract`
-for a unit with none; tell the user. A fresh session gets the same ladder, provided it is unchanged. A
+for a unit with none; tell the user. A
 scribe contract bound for `haiku` runs the guard with `--shape=scribe`.
 
 `spec-master` and `milestone-auditor` always run on their `opus` frontmatter default.

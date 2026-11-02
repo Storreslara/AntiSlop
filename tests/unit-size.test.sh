@@ -193,6 +193,7 @@ for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
            '(rv-o5)|its issue stays open: put it and its `check:` line on your `open:` line'; do
     flat "$ROOT/$f" | grep -qF -- "${p#*|}" && ok "${p%%|*} $f: ${p#*|}" || bad "${p%%|*} $f missing: ${p#*|}"
   done
+  flat "$ROOT/$f" | grep -qF 'no explorer either, as in small (N21).' && ok "(l2-o1) $f: small repo skips the explorer" || bad "(l2-o1) $f missing: small-repo explorer skip"
   if flat "$ROOT/$f" | grep -qF 'Medium and full units always get their reviewer (if present); in agent-teams mode every unit does.' \
      && ! flat "$ROOT/$f" | grep -qF 'Every unit in every lane gets its reviewer.'; then
     ok "(rv-o3) $f: medium and full units get the reviewer, old sentence gone"
