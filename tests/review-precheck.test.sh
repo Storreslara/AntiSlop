@@ -228,6 +228,17 @@ bash "$L/bin/review-precheck.sh" u1 "$BASE" --contract "$C" >/dev/null 2>&1; [ "
 bash "$L/bin/review-precheck.sh" u1 "$BASE" --contract "$C" >/dev/null 2>&1; [ "$?" = 2 ] && ok "(k) unit-scope.sh empty: exit 2" || bad "(k) empty library"
 rm -rf "$L"
 
+# (l2-r1..r4) --blast-radius appends `br ` lines, or one `br blast-radius: unavailable` line.
+P0="$(bash "$PC" u1 "$BASE" --contract "$C" 2>/dev/null)"; P1="$(bash "$PC" u1 "$BASE" --contract "$C" --blast-radius 2>/dev/null)"
+grep -q '^br ' <<< "$P0" && bad "(l2-r1) br line without the flag" || ok "(l2-r1) no br line without the flag"
+[ -n "$(grep '^br ' <<< "$P1")" ] && [ "$(grep -v '^br ' <<< "$P1")" = "$P0" ] && [ -z "$(sed -n '/^br /,$p' <<< "$P1" | grep -v '^br ')" ] \
+  && ok "(l2-r2) flag only appends trailing br lines" || bad "(l2-r2) packet differs beyond br lines"
+L="$(mktemp -d)"; mkdir -p "$L/bin" "$L/hooks/scripts/lib" && cp "$PC" "$L/bin/" && cp "$ROOT"/hooks/scripts/lib/*.sh "$L/hooks/scripts/lib/"
+[ "$(bash "$L/bin/review-precheck.sh" u1 "$BASE" --contract "$C" --blast-radius 2>/dev/null | grep '^br ')" = "br blast-radius: unavailable" ] \
+  && ok "(l2-r3) no blast-radius.sh: unavailable line" || bad "(l2-r3) unavailable line missing"
+rm -rf "$L"
+bash "$PC" u1 "$BASE" --contract "$C" --criterion 1 --blast-radius >/dev/null 2>&1; [ "$?" = 2 ] && ok "(l2-r4) --criterion with --blast-radius: exit 2" || bad "(l2-r4) not a usage error"
+
 # (j) prose: the reviewer and the protocol name the pre-review script and its FAIL rule.
 flat() { tr -s ' \n' ' ' < "$1"; }
 for f in agents/reviewer.md .claude/agents/reviewer.md; do
