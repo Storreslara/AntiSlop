@@ -45,7 +45,10 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
     state_append_audit_log "review-audit.log" "$(utc) cleared-by=reviewer"
     allow
   fi
-  echo "Reviewer identity '${agent_type}' is not this project's reviewer (unrecognized namespace) - pending-review flags were NOT cleared. Dispatch this project's own reviewer, or write 'defer: <reason>' or 'skip: <reason>' into a flag that exists." >&2
+  ns_tail="write 'defer: <reason>' or 'skip: <reason>' into a flag that exists."
+  [ ! -f "${dot}/bin/unit-bookkeeping.sh" ] \
+    || ns_tail="run: bash ${dot_label}/bin/unit-bookkeeping.sh flag defer|skip <reason> (existing flags only)."
+  echo "Reviewer identity '${agent_type}' is not this project's reviewer (unrecognized namespace) - pending-review flags were NOT cleared. Dispatch this project's own reviewer, or ${ns_tail}" >&2
 fi
 
 if [ "$hook_event" = "Stop" ]; then

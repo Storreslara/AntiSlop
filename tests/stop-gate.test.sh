@@ -224,6 +224,32 @@ if [ "$rc_lp" = 2 ] && [ "$rc_main" = 2 ] && [ -f "$d/.claude/.pending-review.lp
   ok "(rv-m5) small-lane D6 trip writes the flag and logs d6-trip"
 else bad "(rv-m5) small D6 trip: lp=$rc_lp main=$rc_main"; fi
 
+# l2-gatemsg: the unrecognized-namespace message names the flag tool when it exists; lane lookup is by id, first record.
+oth='{"hook_event_name":"SubagentStop","agent_type":"other:reviewer","agent_id":"r","session_id":"s1"}'
+d="$(project l2-g1 enforce)"
+mkdir -p "$d/.claude/bin"; : > "$d/.claude/bin/unit-bookkeeping.sh"
+run "$d" "$oth"
+if grep -q 'unit-bookkeeping.sh flag defer|skip <reason>' <<< "$err"; then ok "(l2-g1) script present: message names flag defer|skip"
+else bad "(l2-g1) rc=$rc err=$err"; fi
+
+d="$(project l2-g2 enforce)"
+run "$d" "$oth"
+if grep -q "write 'defer: <reason>'" <<< "$err" && ! grep -q 'unit-bookkeeping' <<< "$err"; then ok "(l2-g2) script absent: old message"
+else bad "(l2-g2) rc=$rc err=$err"; fi
+
+lane_case l2-g3 enforce medium same
+printf '2026-11-01T00:00:00Z tool_use_id=toolu_other prompt=%s unit=u0 lane=small\n' "$(printf 'z' | sha256sum | cut -d' ' -f1)" \
+  | cat - "$d/.claude/$r/dispatch-lane.log" > "$d/.claude/$r/l.tmp" && mv "$d/.claude/$r/l.tmp" "$d/.claude/$r/dispatch-lane.log"
+run "$d" "$lpt"
+if [ "$rc" = 0 ] && [ -f "$d/.claude/.pending-review.lp-1" ]; then ok "(l2-g3) another id's small record is skipped; writer's medium writes the flag"
+else bad "(l2-g3) rc=$rc"; fi
+
+lane_case l2-g4 enforce medium same
+sed 's/lane=medium/lane=small/' "$d/.claude/$r/dispatch-lane.log" >> "$d/.claude/$r/dispatch-lane.log"
+run "$d" "$lpt"
+if [ "$rc" = 0 ] && [ -f "$d/.claude/.pending-review.lp-1" ]; then ok "(l2-g4) first record for the writer's id wins (medium, then small)"
+else bad "(l2-g4) rc=$rc"; fi
+
 # rv-flagprose: the prose names the flag channel and the small-lane route, on the source and deployed copy.
 sq() { tr -s ' \n' ' ' < "$1" | grep -qF -- "$2"; }
 pin() { # $1 = id, $2 = phrase, $3.. = files

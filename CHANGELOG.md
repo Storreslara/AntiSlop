@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- **Gate message and flag mode (l2-gatemsg).** The unrecognized-namespace reviewer stop points to `unit-bookkeeping.sh flag defer|skip` when that script exists, and keeps the old text when it does not; the reviewer-route core runs `chmod 644` on the temp file before `mv`, so a marked flag keeps mode 644 instead of mktemp's 600. Pins `(l2-g1)` to `(l2-g6)` in `tests/stop-gate.test.sh` and `tests/reviewer-route-gate-caller.test.sh`.
 - **Dispatch hygiene no longer warns on prompt size (l2-h4).** The advisory H4 size warning and its `warned=H4-size` log line are removed from `dispatch-hygiene.sh`; H4's field check and H1's `maxPromptBytes` stay. The protocol's "A contract is at most 3072 bytes" remains a spec-master rule. `tests/dispatch-hygiene.test.sh` T49c now asserts silence.
 - **A/B rows score a denial-only stall as complete (l2-abfix).** `make-row.py` sets `complete` when an otherwise clean run (subtype `success`, no `is_error`, exit code 0) has a `stalled-human` summary with `permission_denials` > 0, `ask_user_attempts` and `escalated_markers` both 0 and every required check passed; a missing key never qualifies. `CONTEXT.md` joins the e03 and e05 allowed paths; README and tests `(l2-a1)` to `(l2-a4)` follow.
 - **Reviewer drops the 1h cache TTL (l2-ttl).** `cacheTtl: 1h` removed from `agents/reviewer.md`: it cost about $6.0 of $10.1 over 25 runs and 14 cross-run cache hits were lost; the 5m default applies. `tests/validate.sh` now asserts the field is absent.

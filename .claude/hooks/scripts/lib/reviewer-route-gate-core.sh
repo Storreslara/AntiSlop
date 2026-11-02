@@ -97,6 +97,7 @@ if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then
       esac
       tmp="$(mktemp "${dot}/.review-dispatched-tmp.XXXXXX" 2>/dev/null)" || continue
       if { printf 'review-dispatched: %s\n' "$ts" && cat "$flag"; } > "$tmp" 2>/dev/null \
+         && chmod 644 "$tmp" 2>/dev/null \
          && mv -f "$tmp" "$flag" 2>/dev/null; then
         marked=$((marked + 1))
       else

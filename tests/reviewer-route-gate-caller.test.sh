@@ -335,6 +335,36 @@ else
   fail=1
 fi
 
+# l2-gatemsg: the flag stays plain when .claude is unwritable; a marked flag keeps mode 644.
+d="$(make_project l2-g5)"
+printf 'x agent=lp-1\n' > "$d/.claude/.pending-review.lp-1"
+if [ "$(id -u)" = 0 ]; then
+  echo "SKIP (l2-g5) root ignores directory modes"
+else
+  chmod 555 "$d/.claude"
+  route "$d" "$(payload "" reviewer)"
+  g5_rc="$rc"
+  st_rc=0
+  printf '{"hook_event_name":"Stop","session_id":"s1"}' \
+    | CLAUDE_PROJECT_DIR="$d" bash hooks/scripts/stop-gate.sh >/dev/null 2>&1 || st_rc=$?
+  chmod 755 "$d/.claude"
+  if [ "$g5_rc" = 0 ] && [ "$(cat "$d/.claude/.pending-review.lp-1")" = "x agent=lp-1" ] && [ "$st_rc" = 2 ]; then
+    echo "OK   (l2-g5) unwritable .claude: flag stays plain, Stop exits 2"
+  else
+    echo "FAIL (l2-g5) route rc=$g5_rc stop rc=$st_rc"; fail=1
+  fi
+fi
+
+d="$(make_project l2-g6)"
+printf 'x agent=lp-1\n' > "$d/.claude/.pending-review.lp-1"
+route "$d" "$(payload "" reviewer)"
+if head -n 1 "$d/.claude/.pending-review.lp-1" | grep -qE "$ts_re" \
+   && [ "$(stat -c %a "$d/.claude/.pending-review.lp-1")" = 644 ]; then
+  echo "OK   (l2-g6) marked flag has mode 644"
+else
+  echo "FAIL (l2-g6) mode=$(stat -c %a "$d/.claude/.pending-review.lp-1")"; fail=1
+fi
+
 # --- MUTATION CONTROL (reviewer-run). Reintroduce the pre-fix state - the
 # new unconditional name-forgery block removed, the existing narrower
 # reviewer-targeted `name:` check (:54-61 as of 915acec) left intact - in a
