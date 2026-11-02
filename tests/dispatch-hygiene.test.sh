@@ -1171,4 +1171,63 @@ else
   bad "(rv-l5) explorer dispatch was recorded"
 fi
 
+# l2-d - the writer-dispatch stamp moves only when the dispatch is allowed (exit 0).
+stamp_project() {
+  # $1 = case name, $2 = dispatchHygiene JSON -> project with the stamp pre-set to 2026-01-01
+  local d; d="$(make_project "$1" "$2")"
+  touch -d 2026-01-01 "$d/.claude/reviewed/.writer-dispatch-stamp"
+  echo "$d"
+}
+stamp_moved() { [ -n "$(find "$1/.claude/reviewed/.writer-dispatch-stamp" -newermt 2026-01-02 2>/dev/null)" ]; }
+
+dir="$(stamp_project l2d1 '{"mode":"block","requireContract":true}')"
+run "$dir" "$(payload lead-programmer 'do it')"
+if [ "$rc" = 2 ] && ! stamp_moved "$dir"; then
+  ok "(l2-d1) a lead-programmer dispatch blocked by H4 leaves the stamp unchanged"
+else
+  bad "(l2-d1) expected rc 2 and an unchanged stamp (rc=$rc)"
+fi
+
+dir="$(stamp_project l2d2 '{"mode":"block","requireContract":true}')"
+run "$dir" "$(payload lead-programmer "$(contract l2d2)")"
+if [ "$rc" = 0 ] && stamp_moved "$dir"; then
+  ok "(l2-d2) an allowed lead-programmer dispatch touches the stamp"
+else
+  bad "(l2-d2) expected rc 0 and a touched stamp (rc=$rc err=$err)"
+fi
+
+dir="$(stamp_project l2d3a '{"mode":"off"}')"
+run "$dir" "$(payload lead-programmer 'do it')"
+rc_off="$rc"; moved_off=no; stamp_moved "$dir" && moved_off=yes
+dir="$(stamp_project l2d3b '{"mode":"block","requireContract":true}')"
+printf 'override: deliberate test dispatch\n' > "$dir/.claude/.dispatch-override"
+run "$dir" "$(payload lead-programmer 'do it')"
+if [ "$rc_off" = 0 ] && [ "$moved_off" = yes ] && [ "$rc" = 0 ] && stamp_moved "$dir"; then
+  ok "(l2-d3) mode off and an override, each with a blocking prompt, touch the stamp"
+else
+  bad "(l2-d3) expected rc 0 and touched in both (off rc=$rc_off moved=$moved_off; override rc=$rc)"
+fi
+
+dir="$(stamp_project l2d4 '{"mode":"block","requireContract":true}')"
+echo P > "$dir/.claude/reviewed/u.pass"; touch -d 2026-01-02 "$dir/.claude/reviewed/u.pass"
+run "$dir" "$(payload lead-programmer 'do it')"
+rc_hyg="$rc"; src=0
+serr="$(echo '{"hook_event_name":"SubagentStop","agent_type":"lead-programmer","agent_id":"lp-1"}' \
+  | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>&1 >/dev/null)" || src=$?
+if [ "$rc_hyg" = 2 ] && [ "$src" = 2 ] && grep -q 'u\.pass' <<<"$serr"; then
+  ok "(l2-d4) a forged .pass, a blocked dispatch, then the writer's stop still trips the marker check"
+else
+  bad "(l2-d4) expected hygiene rc 2 and stop rc 2 naming u.pass (hyg=$rc_hyg stop=$src err=$serr)"
+fi
+
+dir="$(stamp_project l2d5 '{"mode":"warn"}')"
+run "$dir" "$(payload explorer "$(contract l2d5)")"
+rc_a="$rc"; moved_a=no; stamp_moved "$dir" && moved_a=yes
+run "$dir" "$(payload explorer 'do it')"
+if [ "$rc_a" = 0 ] && [ "$moved_a" = no ] && [ "$rc" = 0 ] && ! stamp_moved "$dir"; then
+  ok "(l2-d5) an explorer dispatch never touches the stamp"
+else
+  bad "(l2-d5) expected an unchanged stamp after explorer dispatches (rc=$rc_a/$rc moved=$moved_a)"
+fi
+
 exit "$fail"

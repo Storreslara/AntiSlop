@@ -30,8 +30,10 @@
 #     target=<writer>" to .claude/reviewed/dispatch-baseline.log. It runs after
 #     the persona-config.json check but before mode "off", the override and
 #     every check, and never changes a verdict. A dispatch of a gatedAgents
-#     target (default lead-programmer) also touches
-#     .claude/reviewed/.writer-dispatch-stamp for stop-gate.sh's marker check.
+#     target (default lead-programmer) that the hook allows (exit 0: mode off,
+#     override, replay, warn, no check fired) also touches
+#     .claude/reviewed/.writer-dispatch-stamp for stop-gate.sh's marker check,
+#     from an EXIT trap; exit 2 or a crash leaves it unchanged (fail closed).
 #  1).claude/.dispatch-override sentinel -> honored only when its content
 #     starts with "override: " (logged, deleted, exit 0). An empty or
 #     reason-less sentinel is deleted but NOT honored, falling through to the
@@ -170,13 +172,23 @@ if [ -n "$bl_target" ] && [[ $bl_tu =~ ^[A-Za-z0-9_]{1,128}$ ]] \
   fi
 fi
 # Writer-dispatch stamp: stop-gate.sh blocks a gated writer's stop when a verdict marker is newer.
+# Touched by the EXIT trap only on exit 0, so a blocked dispatch or a crash leaves it (fail closed).
+sg_stamp_due=0
+sg_exit() {
+  local rc=$?
+  if [ "$rc" = 0 ] && [ "$sg_stamp_due" = 1 ]; then
+    { mkdir -p "${project_dir}/.claude/reviewed" \
+      && touch "${project_dir}/.claude/reviewed/.writer-dispatch-stamp"; } 2>/dev/null || true
+  fi
+  exit "$rc"
+}
+trap sg_exit EXIT
 sg_target="$(echo "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)"
 sg_gated="$(jq -r '.gatedAgents[]? // empty' "$config" 2>/dev/null || true)"
 [ -n "$sg_gated" ] || sg_gated="lead-programmer"
 while IFS= read -r sg_name; do
   if [ -n "$sg_name" ] && [ -n "$sg_target" ] && persona_matches_gate "$sg_name" "$sg_target"; then
-    { mkdir -p "${project_dir}/.claude/reviewed" \
-      && touch "${project_dir}/.claude/reviewed/.writer-dispatch-stamp"; } 2>/dev/null || true
+    sg_stamp_due=1
     break
   fi
 done <<< "$sg_gated"
