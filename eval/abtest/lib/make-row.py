@@ -58,6 +58,14 @@ def validate_checks(checks, expected):
         fail(f"expected {expected} required checks, found {found}")
 
 
+def denial_only(summary):
+    """A permission denial that is the sole stall cause; a missing key never qualifies."""
+    def count(key):
+        v = summary.get(key)
+        return v if isinstance(v, int) and not isinstance(v, bool) else None
+    return (count("permission_denials") or 0) > 0 and count("ask_user_attempts") == 0 and count("escalated_markers") == 0
+
+
 def build(a):
     summary = load(a.summary)
     checks = load(a.checks)
@@ -71,6 +79,8 @@ def build(a):
     passed = [c for c in required if c.get("pass")]
     rate = (len(passed) / len(required)) if required else None
     escaped = sum(1 for c in checks if c.get("kind") in ("defect", "security") and not c.get("pass"))
+    if status == "stalled-human" and denial_only(summary) and len(passed) == len(required):
+        status = "complete"
     run_pass = status == "complete" and len(passed) == len(required)
     if a.arm == "A":
         process = dict(ARM_A_PROCESS)

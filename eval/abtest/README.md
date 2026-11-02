@@ -104,7 +104,7 @@ what it finds; the deny rules refuse only a command that names the harness root.
 token is the check, it must be re-run after OD-19, and a `FOUND` blocks everything.
 Since OD-20 Arm B runs with two gates relaxed: the plugin copy that `arm-b.sh` loads (`abtest_plugin_copy`, which
 calls `abtest_relax_bash_gates`) does not register `harness-integrity-gate.sh` and `reviewed-path-gate.sh` for the Bash
-matcher, because both denied read-only commands and any denial scores a row `stalled-human`. Their Write and Edit
+matcher, because both denied read-only commands and any denial scores a row `stalled-human`. (since l2-abfix, a row whose only stall cause is a permission denial with all required checks passing scores `complete`). Their Write and Edit
 registrations, every other hook, the scripts and the product tree are as shipped. The rows of the second pilot are
 superseded under OD-14, so after this change run steps 1, 2 and 4 again. A third denial in the E3 B row (a permission
 rule on a `sed` of an agent file) is not covered; if the pilot still stalls on it, report it.

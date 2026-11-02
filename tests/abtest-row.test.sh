@@ -45,6 +45,17 @@ check "plugin fields are kept for arm B" "$(field "$R" '[d["plugin_commit"], d["
 R="$(row summary-stalled.json checks-pass.json B --process "$FX/process-b.json")"
 check "a stall fails the run with every check passing" "$(field "$R" '[d["run_pass"], d["completion_status"]]')" "[False, 'stalled-human']"
 
+R="$(row summary-denied.json checks-pass.json A)"
+check "a denial-only stall with every check passing scores complete (l2-a1)" "$(field "$R" '[d["run_pass"], d["completion_status"], d["human_interventions_required"]]')" "[True, 'complete', 1]"
+R="$(row summary-denied.json checks-fail.json A)"
+check "a denial-only stall with a failed check stays stalled (l2-a2)" "$(field "$R" '[d["run_pass"], d["completion_status"]]')" "[False, 'stalled-human']"
+sed 's/"ask_user_attempts":0/"ask_user_attempts":1/' "$FX/summary-denied.json" > "$T/summary-asked.json"
+R="$(python3 "$PY" --summary "$T/summary-asked.json" --checks "$FX/checks-pass.json" --arm A --eval-id e --rep 1 --started-at t --harness-commit h --cli-version c --fixture-commit f --prompt-file "$FX/prompt.txt" --wall-clock-ms 1 --expected-required 2)"
+check "a denial plus a question to the user stays stalled (l2-a3)" "$(field "$R" '[d["run_pass"], d["completion_status"]]')" "[False, 'stalled-human']"
+sed 's/"escalated_markers":0/"escalated_markers":1/' "$FX/summary-denied.json" > "$T/summary-escalated.json"
+R="$(python3 "$PY" --summary "$T/summary-escalated.json" --checks "$FX/checks-pass.json" --arm A --eval-id e --rep 1 --started-at t --harness-commit h --cli-version c --fixture-commit f --prompt-file "$FX/prompt.txt" --wall-clock-ms 1 --expected-required 2)"
+check "a denial plus an escalation stays stalled (l2-a4)" "$(field "$R" '[d["run_pass"], d["completion_status"]]')" "[False, 'stalled-human']"
+
 R="$(row summary-limit.json checks-pass.json A)"
 check "a usage-limit row is kept with its own status" "$(field "$R" '[d["run_pass"], d["completion_status"]]')" "[False, 'usage-limit']"
 

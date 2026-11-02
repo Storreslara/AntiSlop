@@ -3,3 +3,4 @@ src/server.js
 src/cli.js
 scripts/export.js
 test
+CONTEXT.md
