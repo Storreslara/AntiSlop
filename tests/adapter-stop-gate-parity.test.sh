@@ -189,6 +189,10 @@ for port in $PORTS; do
   rc=0; run_gated_stop "$port" "$dir" "" other-plugin:reviewer 2>/dev/null || rc=$?
   check "(f4) $port: a foreign-namespace reviewer does not clear the flag" \
     "$([ "$rc" = 0 ] && [ "$(has_flag "$dir" "$port")" = true ] && echo true || echo false)" "rc=$rc"
+  dir="$(make_project "$port" l2p1)"
+  rc=0; export writer_lane=small; run_gated_stop "$port" "$dir" 2>/dev/null || rc=$?; unset writer_lane
+  check "(l2-p1) $port: a gated writer stop with writer_lane=small exported still writes the flag" \
+    "$([ "$rc" = 0 ] && [ "$(has_flag "$dir" "$port")" = true ] && echo true || echo false)" "rc=$rc"
 done
 # (e) MUTATION CONTROL (issue #202 crit. 4): revert the dedupe guard in a
 #     throwaway copy of CODEX's core (not the thin entry - the logic lives

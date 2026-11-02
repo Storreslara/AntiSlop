@@ -69,4 +69,5 @@ if [ "$hook_event" != "SubagentStop" ]; then
 fi
 
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
+writer_lane=""
 source "${lib_dir}/stop-gate-core.sh"
