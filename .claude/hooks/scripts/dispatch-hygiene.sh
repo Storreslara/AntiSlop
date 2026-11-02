@@ -61,7 +61,7 @@
 #  5) H4 a gated dispatch missing any of the five dispatch-contract fields the
 #     persona protocol's "Dispatch contract (five fields)" section defines
 #     (extra headings are fine). Gated targets only, and disarmed by
-#     `requireContract: false`. A prompt over 3072 bytes only warns.
+#     `requireContract: false`.
 #  6) every check that fired is reported; mode "block" logs blocked= and exits
 #     2, mode "warn" logs warned= and exits 0.
 #
@@ -442,12 +442,6 @@ if [ "$is_gated" = true ]; then
     done
     if [ -n "$missing" ]; then
       fire H4 "H4: dispatch to a gated target is missing or has an empty body under ${missing}. A gated dispatch must carry all five contract fields, each with real content (see the Dispatch contract (five fields) section of the persona protocol); set dispatchHygiene.requireContract to false to disarm this check."
-    fi
-    # Size is advisory only: it never enters $fired, so it cannot block.
-    prompt_bytes="$(printf %s "$prompt" | wc -c)"
-    if [ "$prompt_bytes" -gt 3072 ]; then
-      printf 'WARNING: H4: dispatch prompt is %s bytes, over the 3072-byte contract size (not blocking) - target %s\n' "$prompt_bytes" "${target:-unknown}" >&2
-      log_line "warned=H4-size target=${target}"
     fi
   fi
 fi

@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- **Dispatch hygiene no longer warns on prompt size (l2-h4).** The advisory H4 size warning and its `warned=H4-size` log line are removed from `dispatch-hygiene.sh`; H4's field check and H1's `maxPromptBytes` stay. The protocol's "A contract is at most 3072 bytes" remains a spec-master rule. `tests/dispatch-hygiene.test.sh` T49c now asserts silence.
 - **A/B rows score a denial-only stall as complete (l2-abfix).** `make-row.py` sets `complete` when an otherwise clean run (subtype `success`, no `is_error`, exit code 0) has a `stalled-human` summary with `permission_denials` > 0, `ask_user_attempts` and `escalated_markers` both 0 and every required check passed; a missing key never qualifies. `CONTEXT.md` joins the e03 and e05 allowed paths; README and tests `(l2-a1)` to `(l2-a4)` follow.
 - **Reviewer drops the 1h cache TTL (l2-ttl).** `cacheTtl: 1h` removed from `agents/reviewer.md`: it cost about $6.0 of $10.1 over 25 runs and 14 cross-run cache hits were lost; the 5m default applies. `tests/validate.sh` now asserts the field is absent.
 - **Reviewer and lead-programmer carry only the protocol sections they need (l2-slim).** The lead-programmer drops Structural questions and Continuing after a FAIL; the reviewer drops Teammate Write/Edit fallback and Pending-review flag, and its gate bullet now says rewording a command to dodge a scan is a bypass. The reviewer preloads only `antislop:roast-work` and invokes `antislop:ubiquitous-language` on demand. Deployed bytes: lead-programmer 29,325 to 24,850, reviewer 45,770 to 42,160.

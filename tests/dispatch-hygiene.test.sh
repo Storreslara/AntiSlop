@@ -342,7 +342,7 @@ dir="$(make_project t20 '')"
 t20_base="$(contract 900)"
 run "$dir" "$(payload lead-programmer "${t20_base}$(xbytes $((29000 - ${#t20_base})))")"
 rc_under="$rc"
-# the advisory H4 size warning may log here; only a block counts
+# only a block counts
 log_absent=1; ! grep -q 'blocked=' "$dir/.claude/dispatch-audit.log" 2>/dev/null || log_absent=0
 run "$dir" "$(payload lead-programmer "${t20_base}$(xbytes $((31000 - ${#t20_base})))")"
 if [ "$rc_under" = 0 ] && [ "$log_absent" = 1 ] && [ "$rc" = 2 ] \
@@ -1077,17 +1077,17 @@ else
   bad "T49b expected exit 2 + blocked=H4 naming '## Acceptance criteria' (rc=$rc err=$err)"
 fi
 
-# T49c - a 3073-byte five-field prompt warns on size and never blocks.
+# T49c - a 3073-byte five-field prompt is not warned about or blocked.
 dir="$(make_project t49c "$h4_cfg")"
 t49c_base="$(five_field 502)"
 t49c_prompt="${t49c_base}$(xbytes $((3073 - ${#t49c_base})))"
 run "$dir" "$(payload lead-programmer "$t49c_prompt")"
-if [ "${#t49c_prompt}" = 3073 ] && [ "$rc" = 0 ] && grep -q 'H4' <<< "$err" && grep -q '3073' <<< "$err" \
-   && grep -q 'warned=H4-size' "$dir/.claude/dispatch-audit.log" \
-   && ! grep -q 'blocked=' "$dir/.claude/dispatch-audit.log"; then
-  ok "T49c 3073-byte five-field prompt -> exit 0, stderr names H4 and 3073, warned=H4-size"
+if [ "${#t49c_prompt}" = 3073 ] && [ "$rc" = 0 ] && ! grep -q 'H4' <<< "$err" \
+   && ! grep -q 'warned=H4-size' "$dir/.claude/dispatch-audit.log" 2>/dev/null \
+   && ! grep -q 'blocked=' "$dir/.claude/dispatch-audit.log" 2>/dev/null; then
+  ok "T49c 3073-byte five-field prompt -> exit 0, no H4 output, no warned=H4-size"
 else
-  bad "T49c expected exit 0 + H4/3073 on stderr + warned=H4-size (rc=$rc err=$err)"
+  bad "T49c expected exit 0, no H4 output, no warned=H4-size (rc=$rc err=$err)"
 fi
 
 # T49d - a nine-element contract (superset) gives no H4.
