@@ -6,8 +6,9 @@
 # AC-C4: one invocation writes a format-valid marker, is not denied by
 # reviewed-path-gate.sh or human-decision-gate.sh (as the reviewer identity),
 # and the marker's first line starts "<VERB> <unit> ", task-gate.sh's rule
-# for a valid marker (stop-gate-core.sh's marker_format_valid() was retired
-# by lp-stopgate, so the suite checks that rule locally).
+# for a valid marker. PASS markers are checked with task-gate.sh's real
+# marker_valid(); FAIL and BLOCKED markers keep the local marker_format_valid()
+# below, since task-gate.sh has no predicate for them.
 # AC-C5: malformed unit id / missing commit are rejected, and the helper's
 # own CLI invocation is BLOCKED for a non-reviewer identity exactly as the
 # raw printf write is today (reviewed-path-gate.test.sh cases 6/13) - proving
@@ -40,6 +41,7 @@ marker_format_valid() {
   case "$(head -n 1 "$1")" in "${3} ${2} "*) return 0 ;; *) return 1 ;; esac
 }
 source hooks/scripts/lib/state-access.sh
+source <(sed -n '/^marker_valid() {/,/^}/p' hooks/scripts/task-gate.sh)
 
 echo "-- AC-C4: single-call PASS/FAIL/BLOCKED writes ------------------------"
 
@@ -50,10 +52,10 @@ run_helper() { ( cd "$proj" && CLAUDE_PROJECT_DIR="$proj" "$helper" "$@" ); }
 
 rc=0
 run_helper PASS unitA abc123 "bash tests/validate.sh" .claude/reviewed/unitA.pass || rc=$?
-if [ "$rc" = 0 ] && marker_format_valid "$proj/.claude/reviewed/unitA.pass" unitA PASS; then
-  pass "PASS: one call writes a marker_format_valid()-valid marker"
+if [ "$rc" = 0 ] && task_id=unitA dot="$proj/.claude" marker_valid; then
+  pass "PASS: one call writes a marker_valid()-valid marker"
 else
-  bad "PASS: rc=$rc, marker_format_valid failed"
+  bad "PASS: rc=$rc, marker_valid failed"
 fi
 first="$(head -n1 "$proj/.claude/reviewed/unitA.pass" 2>/dev/null || true)"
 case "$first" in
@@ -204,7 +206,8 @@ done
 # early-exit would let it through the gate even for lead-programmer - this is
 # exactly the capability leak the "Critical design constraint" section warns
 # against. Demonstrated here, then contrasted with the real helper_cmd (which
-# spells the marker path) staying BLOCKED above for the same identity.
+# spells the marker path); since 0.32.0 the gates allow every Bash command, so
+# the real helper_cmd is allowed too.
 vuln_cmd="bash hooks/scripts/marker-write.sh PASS spec2-unitC abc123 \"bash tests/validate.sh\""
 rc=0
 printf '%s' "$(jq -n --arg a lead-programmer --arg c "$vuln_cmd" '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')" \
@@ -228,8 +231,8 @@ done
 # invocation both passes the gate AND produces a correct marker.
 rc=0
 ( cd "$gproj" && CLAUDE_PROJECT_DIR="$gproj" "$helper" PASS spec2-unitC abc123 "bash tests/validate.sh" .claude/reviewed/spec2-unitC.pass ) >/dev/null 2>&1 || rc=$?
-if [ "$rc" = 0 ] && marker_format_valid "$gproj/.claude/reviewed/spec2-unitC.pass" spec2-unitC PASS; then
-  pass "one real invocation produces a marker_format_valid()-valid marker"
+if [ "$rc" = 0 ] && task_id=spec2-unitC dot="$gproj/.claude" marker_valid; then
+  pass "one real invocation produces a marker_valid()-valid marker"
 else
   bad "real invocation failed or produced an invalid marker (rc=$rc)"
 fi

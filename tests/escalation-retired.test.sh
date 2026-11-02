@@ -45,7 +45,7 @@ if [ "$mode" = code-bin ]; then
   if grep -q '/api/decis''ion' bin/microworld-dashboard/server.js; then
     grep -n '/api/decis''ion' bin/microworld-dashboard/server.js; fail=1
   fi
-  if grep -n "^const BIN_HELPER_FILES" bin/cli.js | grep -q "$card"; then
+  if awk '/^const BIN_HELPER_FILES/{f=1} f{print} f&&/\];/{exit}' bin/cli.js | grep -q "$card"; then
     bad "BIN_HELPER_FILES lists $card"
   fi
   exit "$fail"
