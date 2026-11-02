@@ -86,3 +86,12 @@ or partial sweep proves nothing.
 
 ## Tracker
 Not published: contracts are dispatched from files; each contract's Retrieval line points at the plan path.
+
+## Contract notes (2026-11-02, contract spawn 1)
+- rs-prose deviates from plan unit 5's text, D5 unchanged: `tests/blast-radius.test.sh` pin `(l2-v4)` holds
+  "read the dispatch header's `Review gating:` line first; only when it is absent, read the key with" for
+  both reviewer copies, so the contract keeps that span and adds, after "means `enforce`.", the sentence
+  "If the header says `off`, run that command too; only its `off` counts." Criterion 1 counts the kept pin
+  as `1` (not `0`) and checks the new sentence instead of 'when it is absent or says `off`'. Budget: the
+  three edits add about 170 bytes (cap 24,630).
+- rs-corelib cuts the text pinned by `(l2-g2)`; that is D7 itself, and the same unit moves the pin.
