@@ -163,6 +163,8 @@ def summarize(path, exit_code, stderr_text, escalated):
 
     return {
         "completion_status": status,
+        "is_error": result is None or bool(result.get("is_error")),
+        "exit_code": exit_code,
         "result_subtype": subtype,
         "result_text": (result or {}).get("result"),
         "num_turns": num_turns,

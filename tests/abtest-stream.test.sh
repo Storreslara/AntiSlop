@@ -222,6 +222,7 @@ check "subagent spawns counted" "$(field "$FX/complete.jsonl" subagent_spawns)" 
 check "tool calls counted" "$(field "$FX/complete.jsonl" tool_calls)" "2"
 check "turns read from the result" "$(field "$FX/complete.jsonl" num_turns)" "7"
 check "human interventions sum asks, denials, escalations" "$(field "$FX/stall-ask.jsonl" human_interventions_required --escalated 2)" "3"
+check "the summary carries is_error and exit_code (l2-a5)" "$(for a in denied:3 mention-error:1 no-result:0; do python3 "$PY" summarize "$FX/${a%:*}.jsonl" --exit-code "${a#*:}" | python3 -c 'import json,sys;d=json.load(sys.stdin);print([d["is_error"],d["exit_code"]])'; done | paste -sd' ')" "[False, 3] [True, 1] [True, 0]"
 
 echo "abtest-stream: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] && echo "All abtest-stream checks passed."

@@ -59,11 +59,14 @@ def validate_checks(checks, expected):
 
 
 def denial_only(summary):
-    """A permission denial that is the sole stall cause; a missing key never qualifies."""
+    """A permission denial that is the sole stall cause in an otherwise clean run; a missing or mistyped key never qualifies."""
     def count(key):
         v = summary.get(key)
         return v if isinstance(v, int) and not isinstance(v, bool) else None
-    return (count("permission_denials") or 0) > 0 and count("ask_user_attempts") == 0 and count("escalated_markers") == 0
+    code = summary.get("exit_code")
+    clean = (summary.get("result_subtype") == "success" and summary.get("is_error") is False
+             and isinstance(code, int) and not isinstance(code, bool) and code == 0)
+    return clean and (count("permission_denials") or 0) > 0 and count("ask_user_attempts") == 0 and count("escalated_markers") == 0
 
 
 def build(a):

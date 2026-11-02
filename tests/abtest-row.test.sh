@@ -56,6 +56,12 @@ sed 's/"escalated_markers":0/"escalated_markers":1/' "$FX/summary-denied.json" >
 R="$(python3 "$PY" --summary "$T/summary-escalated.json" --checks "$FX/checks-pass.json" --arm A --eval-id e --rep 1 --started-at t --harness-commit h --cli-version c --fixture-commit f --prompt-file "$FX/prompt.txt" --wall-clock-ms 1 --expected-required 2)"
 check "a denial plus an escalation stays stalled (l2-a4)" "$(field "$R" '[d["run_pass"], d["completion_status"]]')" "[False, 'stalled-human']"
 
+sed 's/"is_error":false/"is_error":true/' "$FX/summary-denied.json" > "$T/summary-iserr.json"
+R="$(python3 "$PY" --summary "$T/summary-iserr.json" --checks "$FX/checks-pass.json" --arm A --eval-id e --rep 1 --started-at t --harness-commit h --cli-version c --fixture-commit f --prompt-file "$FX/prompt.txt" --wall-clock-ms 1 --expected-required 2)"
+check "a denial plus an error result stays stalled (l2-a6)" "$(field "$R" '[d["run_pass"], d["completion_status"]]')" "[False, 'stalled-human']"
+sed 's/"exit_code":0/"exit_code":1/' "$FX/summary-denied.json" > "$T/summary-exit1.json"
+R="$(python3 "$PY" --summary "$T/summary-exit1.json" --checks "$FX/checks-pass.json" --arm A --eval-id e --rep 1 --started-at t --harness-commit h --cli-version c --fixture-commit f --prompt-file "$FX/prompt.txt" --wall-clock-ms 1 --expected-required 2)"
+check "a denial plus a non-zero exit stays stalled (l2-a7)" "$(field "$R" '[d["run_pass"], d["completion_status"]]')" "[False, 'stalled-human']"
 R="$(row summary-limit.json checks-pass.json A)"
 check "a usage-limit row is kept with its own status" "$(field "$R" '[d["run_pass"], d["completion_status"]]')" "[False, 'usage-limit']"
 
