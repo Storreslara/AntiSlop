@@ -20,13 +20,17 @@
 #     or "review-dispatched: ". skip: is logged and deletes its flag; defer: is logged and keeps it;
 #     review-dispatched: keeps it, logs nothing. The block text names unit-bookkeeping.sh when present.
 #  4) a stop by an agent not in gatedAgents (default lead-programmer) -> allow.
-#  5) a non-empty WIP sentinel -> log, delete, allow.
+#  5) a non-empty WIP sentinel -> log, delete, allow. On a SubagentStop the marker check (rule 6) runs
+#     first: when it trips, the sentinel is deleted and logged "wip-ignored d6-trip agent=<id>" to
+#     wip-audit.log, not honoured, and rule 6 follows.
 #  6) a gated SubagentStop -> write the flag (when writer_lane is "small", write none and log
-#     "small-lane agent=<id> no-flag" to review-audit.log, unless the marker check below trips: then
+#     "small-lane agent=<id> no-flag" to review-audit.log, unless the marker check trips: then
 #     write it and log "small-lane d6-trip agent=<id> flag"), then block, naming the file, when a
 #     *.pass, *.fail or *.blocked marker is newer than reviewed/.writer-dispatch-stamp (touched by
 #     dispatch-hygiene.sh at each gated dispatch; no stamp, no check; small lane included). The flag
 #     comes first because the loop-guarded stop after a block is allowed without reaching this rule.
+#     It replaces whatever stands at the flag path (state_replace_pending_review); when nothing can be
+#     written there, block, naming the path.
 set -euo pipefail
 
 utc() { date -u +%Y-%m-%dT%H:%M:%SZ; }
@@ -91,7 +95,17 @@ done <<< "$gated"
 
 agent_id="${raw_agent_id//[^a-zA-Z0-9._-]/_}"
 sentinel="${dot}/wip-handoff.${agent_id}"
-if state_wip_handoff_exists "$agent_id"; then
+stamp="${dot}/reviewed/.writer-dispatch-stamp"
+tripped=""
+if [ "$hook_event" = "SubagentStop" ] && [ -f "$stamp" ]; then
+  for marker in "${dot}"/reviewed/*.pass "${dot}"/reviewed/*.fail "${dot}"/reviewed/*.blocked; do
+    if [ "$marker" -nt "$stamp" ]; then tripped="$marker"; break; fi
+  done
+fi
+if [ -n "$tripped" ] && state_wip_handoff_exists "$agent_id"; then
+  state_delete_wip_handoff "$agent_id"
+  state_append_audit_log "wip-audit.log" "$(utc) wip-ignored d6-trip agent=${agent_id}"
+elif state_wip_handoff_exists "$agent_id"; then
   reason="$(state_read_wip_handoff "$agent_id")"
   state_delete_wip_handoff "$agent_id"
   if [ -n "$reason" ]; then
@@ -103,17 +117,11 @@ fi
 
 [ "$hook_event" = "SubagentStop" ] || allow
 
-stamp="${dot}/reviewed/.writer-dispatch-stamp"
-tripped=""
-if [ -f "$stamp" ]; then
-  for marker in "${dot}"/reviewed/*.pass "${dot}"/reviewed/*.fail "${dot}"/reviewed/*.blocked; do
-    if [ "$marker" -nt "$stamp" ]; then tripped="$marker"; break; fi
-  done
-fi
 if [ "${writer_lane:-}" = "small" ] && [ -z "$tripped" ]; then
   state_append_audit_log "review-audit.log" "$(utc) small-lane agent=${agent_id} no-flag"
 else
-  state_write_pending_review "$agent_id" "$(printf '%s agent=%s' "$(utc)" "$agent_id")"
+  state_replace_pending_review "$agent_id" "$(printf '%s agent=%s' "$(utc)" "$agent_id")" \
+    || block "Could not write the pending-review flag ${dot_label}/.pending-review.${agent_id} (a directory or an unwritable path stands there). Report this to your dispatcher and wait."
   [ "${writer_lane:-}" != "small" ] || state_append_audit_log "review-audit.log" "$(utc) small-lane d6-trip agent=${agent_id} flag"
 fi
 if [ -n "$tripped" ]; then

@@ -107,6 +107,24 @@ state_write_pending_review() {
   fi
 }
 
+# Replaces whatever stands at the flag path (file or symlink, never followed) with a 644 file. A
+# directory there skips the mv (it would move the file into it). Returns 1 when nothing was written.
+state_replace_pending_review() {
+  local agent_id="$1"
+  local content="$2"
+  local flag_file="${dot}/.pending-review.${agent_id}"
+  local tmp
+
+  if [ ! -d "$flag_file" ] && tmp="$(mktemp "${dot}/.pending-review-tmp.XXXXXX" 2>/dev/null)"; then
+    if printf '%s\n' "$content" > "$tmp" && chmod 644 "$tmp" && mv -f "$tmp" "$flag_file"; then
+      return 0
+    fi
+    rm -f "$tmp"
+  fi
+  rm -f "$flag_file" 2>/dev/null || true
+  (set -C; printf '%s\n' "$content" > "$flag_file") 2>/dev/null || return 1
+}
+
 state_delete_pending_review() {
   local agent_id="$1"
   local flag_file="${dot}/.pending-review.${agent_id}"
@@ -321,6 +339,7 @@ export -f state_unit_marker_exists
 export -f state_read_pending_review
 export -f state_pending_review_exists
 export -f state_write_pending_review
+export -f state_replace_pending_review
 export -f state_delete_pending_review
 export -f state_clear_all_pending_review
 export -f state_read_wip_handoff
