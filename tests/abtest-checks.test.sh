@@ -395,7 +395,7 @@ rm -rf "$T/lg/id"; mkdir -p "$T/lg/id"; printf '{"description":"notes"}\n' > "$T
 ( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_fixture_baseline "$T/lg/id" > /dev/null )
 check "the baseline commit has a neutral identity and message" "$(git -C "$T/lg/id" log --format='%an|%ae|%cn|%ce|%s')" "dev|dev@example.invalid|dev|dev@example.invalid|initial import"
 check "the baseline repository has one commit and one ref" "$(git -C "$T/lg/id" rev-list --all --count)|$(git -C "$T/lg/id" for-each-ref --format='%(refname)')" "1|refs/heads/main"
-check "the baseline commit date is fixed" "$(git -C "$T/lg/id" log -1 --format='%aI|%cI')" "2026-01-01T00:00:00+00:00|2026-01-01T00:00:00+00:00"
+check "the baseline commit date is fixed" "$(git -C "$T/lg/id" log -1 --format='%aI|%cI' | sed 's/Z/+00:00/g')" "2026-01-01T00:00:00+00:00|2026-01-01T00:00:00+00:00"
 check "a built E1 baseline passes the guard, history included" "$(lg "$T/lg/e01")" "rc=0"
 check "the built E1 baseline history is neutral" "$(git -C "$T/lg/e01" log --format='%an|%ae|%s')" "dev|dev@example.invalid|initial import"
 rm -rf "$T/lg/leakid"; mkdir -p "$T/lg/leakid"; printf '{"description":"notes"}\n' > "$T/lg/leakid/package.json"

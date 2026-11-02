@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **abtest-checks date assertion (ci-datefix).** `tests/abtest-checks.test.sh` accepts both `Z` and `+00:00` spellings of the fixed baseline commit date, which newer git prints as `Z`.
+
 ## [0.35.0] - 2026-11-03
 
 - **Release 0.35.0: residuals (plan 2026-11-03-residuals, rs-release).** Closes the residuals left by lean pipeline 2: a signal no longer moves the writer-dispatch stamp, stop-gate wording and comments are corrected, a submodule escalates the small lane, `roast-work`-only transcripts attribute to the reviewer, the reviewer gating header gains `Mode: advisory`, and the ADRs, wiki and glossaries record the closures.
