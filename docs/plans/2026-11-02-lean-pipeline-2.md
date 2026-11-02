@@ -174,9 +174,9 @@ Files: `agents/orchestrator.md`, `docs/orchestrator-rationale.md`, `tests/unit-s
 - "their tests and, outside the small lane, the explorer's blast radius." → "their tests and, when the
   explorer ran, its blast radius."
 - "(N1-N20)" → "(N1-N21)".
-Cuts (unpinned; checked with `git grep` over `tests/`): delete " A fresh session gets the same ladder,
-provided it is unchanged." (N19 already says it) and delete "The shared protocol's "Review markers and gate
-mechanics (owner-facing)" section lists the rest." (a pointer to a section the deployed copy inlines).
+Cuts (unpinned per `git grep -nF` over `tests/`, `scripts/`): delete " Every re-dispatch carries the
+defect history or the fix contract." and " You have no Write/Edit tool: every file change goes to the
+lead-programmer." (stated elsewhere); both move verbatim to N21.
 Rationale gains N21: the A/B figures (10 explorer dispatches on 460-line repos, $0.60 and 33 s each) and
 D4's thresholds. Pin `(l2-o1)` the new sentence in both copies. Source at most 16,384 bytes, deployed at
 most 40,960.
