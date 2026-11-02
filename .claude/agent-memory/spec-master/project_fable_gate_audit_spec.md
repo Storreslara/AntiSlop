@@ -100,3 +100,5 @@ to edit `bin/cli.js` too. See [[validate-sh-is-a-mirror-parity-check]].
 pinned at 9 — converting a row from self-reported to mechanically-checked
 without bumping the count fails the suite. Any gate-behaviour spec needs this
 as a cross-cutting criterion.
+
+Note (2026-11-02): `hooks/scripts/lib/benign-command.sh` (with `command_skeleton()`) and `mentions_marker_dir()` were deleted in 0.32.0 (lp-bashscan: commits 05dfe7f8 and adf8b6b3; `mentions_marker_dir` also left `harness-integrity-gate.sh` in cb021a4b), so what this file says about them is history.

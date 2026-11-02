@@ -2,7 +2,7 @@
 
 Date: 2026-08-24
 
-Status: Accepted (units hdg-lexer-1, hdg-prose-2, hdg-prose-2-fix2, rpg-comment-3, 2026-08-24)
+Status: Accepted (units hdg-lexer-1, hdg-prose-2, hdg-prose-2-fix2, rpg-comment-3, 2026-08-24). Superseded in part by ADR-0044: the Bash command-text scans it governs were retired in 0.32.0, and `human-decision-gate.sh` is now a stub, so the structural-trigger rule no longer constrains a live Bash scan.
 
 ## Context
 

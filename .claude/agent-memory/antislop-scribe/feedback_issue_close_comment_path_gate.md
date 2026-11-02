@@ -37,3 +37,5 @@ path — `command_skeleton()` in `hooks/scripts/lib/benign-command.sh` fails
 closed on ANY `<<` operator before it even gets to path matching. Use the
 `Write` tool to create the scratch file instead of a Bash heredoc; only then
 run `gh issue comment ... --body-file <scratch-file>` via Bash.
+
+Note (2026-11-02): `hooks/scripts/lib/benign-command.sh` (with `command_skeleton()`) and `mentions_marker_dir()` were deleted in 0.32.0 (lp-bashscan: commits 05dfe7f8 and adf8b6b3; `mentions_marker_dir` also left `harness-integrity-gate.sh` in cb021a4b), so what this file says about them is history.

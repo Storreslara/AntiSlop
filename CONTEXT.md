@@ -1493,6 +1493,7 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   [[dashboard-originated decision write]], and [[DECISION file]].
 
 **DECISION file**:
+Retired (0.32.0): no `DECISION` file is written or read any more; a decision that belongs to the user goes back as a [[needs-human note]], with no marker, packet or gate (ADR-0044).
 (unit #325, 2026-08-11, Step 1 of the human-decision-channel fix, issue #324;
   read and transcribed by the reviewer, Step 3/amended #136, 2026-08-11;
   refreshed esc-chat-4, 2026-10-03, ADR-0039) —
@@ -1586,6 +1587,7 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   See [[Microworld dashboard]], [[execution credential]], and [[read-only mode]] (`--dashboard-no-tty`).
 
 **DECISION channel**:
+Retired (0.32.0): the channel is gone and `human-decision-gate.sh` is a stub that allows every call (`hooks/scripts/human-decision-gate.sh:1-5`), kept registered for A/B harness parity (ADR-0044).
 (unit #326, 2026-08-11, named at Step 2 of #324; read and transcribed by the
   reviewer, Step 3/amended #136, 2026-08-11) — compact name for the resolution
   route [[DECISION file]] provides: `.claude/human-review/<task-id>/DECISION`,
@@ -1779,7 +1781,7 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   only through this file.
 
 **Arm A / Arm B**:
-(unit abt-u18, 2026-10-16) — the two values of an [[arm]] in the AntiSlop-vs-Fable comparison suite in `eval/abtest/`. Arm A is a bare Fable agent (`claude -p`, no plugin, no personas, no hooks); Arm B is AntiSlop as shipped, except for one disclosed gate relaxation (orchestrator as the main agent, personas scaffolded, plugin loaded with `--plugin-dir` from a copy whose hook registrations for two Bash gates are dropped; see OD-20). Both get the same fixture, prompt, turn cap and time cap. _Avoid_: "armed" for this sense; that word is the harness's `harness_armed` state.
+(unit abt-u18, 2026-10-16) — the two values of an [[arm]] in the AntiSlop-vs-Fable comparison suite in `eval/abtest/`. Arm A is a bare Fable agent (`claude -p`, no plugin, no personas, no hooks); Arm B is AntiSlop as shipped, except for one disclosed gate relaxation (orchestrator as the main agent, personas scaffolded, plugin loaded with `--plugin-dir` from a copy whose hook registrations for two Bash gates are dropped; see OD-20, a no-op since 0.32.0 because both gates' Bash branch already allows every command: `hooks/scripts/reviewed-path-gate.sh:36`, `hooks/scripts/harness-integrity-gate.sh:180-181`; lp-bashscan, ADR-0044). Both get the same fixture, prompt, turn cap and time cap. _Avoid_: "armed" for this sense; that word is the harness's `harness_armed` state.
 
 **out-of-scope lines**:
 (unit abt-u18, 2026-10-16) — added plus deleted lines in files outside an eval's allowed paths; the persona scaffold (`.claude/`) and `docs/plans/` never count. The measured form of the `coding-discipline` surgical-diff rule. _Avoid_: "scope creep" as a metric name.

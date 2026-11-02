@@ -1,7 +1,7 @@
 # 0020 — Write/Edit tool-call CONTENT is deliberately not scanned for marker-path substrings
 
 **Date:** 2026-08-11  
-**Status:** Accepted  
+**Status:** Accepted. Superseded in part by ADR-0044: the Bash command-text scan this ADR contrasts with was retired in 0.32.0 (both gates' Bash branch allows every command); the Write/Edit path-only decision stands.  
 **Issue:** [#288](https://github.com/Storreslara/AntiSlop/issues/288)
 
 ## Decision

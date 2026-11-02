@@ -29,11 +29,9 @@ and `docs/maintenance/resync-vendored-skills.md` for the re-sync runbook.
    `stop-gate.sh` (done = reviewer PASS, not "I think I'm done"),
    `reviewer-route-gate.sh` (lead-programmer can't route around the
    reviewer), `reviewed-path-gate.sh` (only the reviewer writes
-   `.claude/reviewed/*.pass`), `human-decision-gate.sh` (with review gating
-   on, no agent can complete a `DECISION` write without a human approving its bytes, within the
-   residuals declared in the glossary's "frozen family table" entry; its one
-   non-deny branch for a `DECISION` write is an `ask` for the main session's prompt-confirmed
-   decision write — see "Human-approved path as consent proof" below),
+   `.claude/reviewed/*.pass`), `human-decision-gate.sh` (retired in 0.32.0, ADR-0044: a stub that allows every call, kept
+   registered for A/B harness parity, `hooks/scripts/human-decision-gate.sh:1-5`; the
+   "Human-approved path" material below is historical),
    `protected-paths.sh`
    (migrations/lockfiles need human approval), `graph-update.sh` +
    `lint-on-edit.sh` (keep the graph and formatting current on every edit),
@@ -71,6 +69,8 @@ mechanism, its three fail-closed guarantees, and why this trimming is
 Claude-Code-only by construction.
 
 ## Marker state machine (`.escalated`, `.directed`)
+
+Retired (0.32.0): the `ESCALATE-TO-HUMAN` verdict, the `.escalated` and `.directed` markers, the escalation packet and the human-decision gate are gone (ADR-0044); the reviewer has PASS, FAIL and INSUFFICIENT-CONTEXT, and a decision for the user goes back as a `needs-human:` note. A leftover `.escalated` file from an older version still makes `reviewed-path-gate.sh` refuse a no-reviewer main-session write (`hooks/scripts/reviewed-path-gate.sh:88-97`). The text below describes the retired design.
 
 When a unit escalates under `humanReviewMode` (defaults to `critical`, on-by-default,
 shipped by unit #135; unit #138 documented it), the

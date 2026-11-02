@@ -69,3 +69,5 @@ Design record: `docs/plans/2026-08-24-human-decision-gate-prose-false-positive.m
 precedent `docs/plans/2026-08-12-human-decision-gate-false-positive.md`.
 Parity: `tests/validate.sh:302` runs `diff -rq hooks/scripts .claude/hooks/scripts`
 and `fileHashes` pins the mirror — see [[validate-sh-is-a-mirror-parity-check]].
+
+Note (2026-11-02): `hooks/scripts/lib/benign-command.sh` (with `command_skeleton()`) and `mentions_marker_dir()` were deleted in 0.32.0 (lp-bashscan: commits 05dfe7f8 and adf8b6b3; `mentions_marker_dir` also left `harness-integrity-gate.sh` in cb021a4b), so what this file says about them is history.

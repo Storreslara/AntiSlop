@@ -120,3 +120,5 @@ probe, not by guessing.**
    `human-review` AND needs an explicit pathspec commit (e.g. because
    other unrelated files are staged and a bare `git commit -m` would
    sweep them in too) still has no clean path through the gate.
+
+Note (2026-11-02): `hooks/scripts/lib/benign-command.sh` (with `command_skeleton()`) and `mentions_marker_dir()` were deleted in 0.32.0 (lp-bashscan: commits 05dfe7f8 and adf8b6b3; `mentions_marker_dir` also left `harness-integrity-gate.sh` in cb021a4b), so what this file says about them is history.

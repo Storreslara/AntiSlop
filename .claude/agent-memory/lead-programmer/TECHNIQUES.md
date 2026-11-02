@@ -36,3 +36,5 @@
 - [Sourcing state-access.sh sets -e](technique_sourcing_state_access_sets_e.md) — non-hook callers inherit set -euo pipefail; set dot first, then set +e (ocig-1)
 - [Decision-gate glob over-block](technique_decision_gate_glob_overblock.md) — `${2%% *}` in a Bash heredoc trips human-decision-gate's glob scan; author scripts with Write first (rgh-u0-2)
 - [pipefail + grep -q SIGPIPE](technique_pipefail_grep_q_sigpipe.md) — `producer | grep -q` under pipefail fails on a match (or masks a fail); capture to a var first (ocigf-1)
+
+Note (2026-11-02): `hooks/scripts/lib/benign-command.sh` (with `command_skeleton()`) and `mentions_marker_dir()` were deleted in 0.32.0 (lp-bashscan: commits 05dfe7f8 and adf8b6b3; `mentions_marker_dir` also left `harness-integrity-gate.sh` in cb021a4b), so what this file says about them is history.
