@@ -246,15 +246,16 @@ o="$(PATH="$T/shim:$PATH" bash "$UB" flag defer 'race')"; rc=$?
 # rv-harden end to end: the real precheck in a scratch repo whose contract is committed at the baseline.
 E="$T/e2e"; mkdir -p "$E" && cd "$E" || exit 1
 git init -q . && mkdir -p .claude/bookkeeping hooks docs/plans && echo '.claude/' > .gitignore
-# env: POST runs after the work commit (untracked files); EMPTY=1 makes the work commit empty; DESC=1 passes a descendant baseline
+# env: PRE runs before the base commit; CPATH is the --contract path; POST runs after the work commit (untracked files); EMPTY=1 makes the work commit empty; DESC=1 passes a descendant baseline
 e_run() { # <criteria block> <listed file>
   printf '## Affected files\n- `%s`\n\n## Acceptance criteria\n%s\n' "$2" "$1" > c.md
+  [ -z "${PRE:-}" ] || eval "$PRE"
   git add -A . && g commit -q -m base && local b w out; b="$(git rev-parse HEAD)"
   if [ -n "${EMPTY:-}" ]; then g commit -q --allow-empty -m work; else echo x > "$2" && git add -A . && g commit -q -m work; fi
   echo 'lane: small files=1 reason=paths' > .claude/bookkeeping/ue.lane
   [ -z "${POST:-}" ] || eval "$POST"
   if [ -n "${DESC:-}" ]; then w="$(git rev-parse HEAD)"; git checkout -q "$b"; b="$w"; fi
-  out="$(CLAUDE_PROJECT_DIR="$E" bash "$UB" check ue "$b" --contract c.md | head -n1)"
+  out="$(CLAUDE_PROJECT_DIR="$E" bash "$UB" check ue "$b" --contract "${CPATH:-c.md}" | head -n1)"
   [ -z "${DESC:-}" ] || git checkout -q -
   rm -f n.txt; echo "$out"
 }
@@ -274,6 +275,14 @@ want "(rv-e10) second heading" "$(e_run "$CRIT1"$'\n'"$CRITF"$'\n## Acceptance c
 want "(rv-e10) fenced heading" "$(e_run "$CRIT1"$'\n'"$CRITF"$'\n~~~\n## x\n~~~\n'"$CRIT2" d10f.txt)" 'check: escalate unit=ue reason=criteria-mismatch'
 mkdir -p sub && printf '## Acceptance criteria\n%s\n%s\n' "$CRIT1" "$CRIT2" > sub/c.md
 want "(rv-e10) contract path is read from the repo top" "$(POST='cd sub' e_run "$CRIT1"$'\n'"$CRITF"$'\n## Acceptance criteria\n'"$CRIT2" d10s.txt)" 'check: escalate unit=ue reason=criteria-mismatch'
+
+# l2-ckhard: a `..` contract path and skip-worktree or assume-unchanged files escalate. One flag per update-index call.
+want "(l2-k1) dotdot segment" "$(CPATH=sub/../c.md e_run "$CRIT1" k1.txt)" 'check: escalate unit=ue reason=criteria-mismatch'
+want "(l2-k2) skip-worktree" "$(POST='git update-index --skip-worktree k1.txt' e_run "$CRIT1" k2.txt)" 'check: escalate unit=ue reason=index-flags'
+git update-index --no-skip-worktree k1.txt
+want "(l2-k2) assume-unchanged" "$(POST='git update-index --assume-unchanged k1.txt' e_run "$CRIT1" k2b.txt)" 'check: escalate unit=ue reason=index-flags'
+git update-index --no-assume-unchanged k1.txt
+want "(l2-k3) cleared bits, x..md" "$(CPATH=x..md PRE='cp c.md x..md' e_run "$CRIT1" k3.txt)" 'check: pass unit=ue reason=precheck'
 
 # l2-bkhdr: review header gating and constitution lines, and the repo size subcommand.
 hdr() { (cd "$T/repo" && CLAUDE_PROJECT_DIR="$1" bash "$UB" review ub "$BASE" | grep -E '^(Review gating|Constitution):' | tr '\n' '|'); }
