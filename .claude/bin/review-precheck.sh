@@ -7,22 +7,24 @@
 # A contract that is not at the baseline is a failure line (`contract: not-at-baseline`), not a fallback.
 # --fix-contract is the exception: it is written after the baseline, so it is read from the working tree.
 set -uo pipefail
-usage() { echo "usage: review-precheck.sh <unit> <baseline> [--contract <path>] [--fix-contract <path>] [--affected <path>]... [--criterion <n>]" >&2; exit 2; }
+usage() { echo "usage: review-precheck.sh <unit> <baseline> [--contract <path>] [--fix-contract <path>] [--affected <path>]... [--criterion <n>] [--blast-radius]" >&2; exit 2; }
 [ "$#" -ge 2 ] || usage
 unit="$1"; base="$2"; shift 2
 [[ "$unit" =~ ^[A-Za-z0-9][A-Za-z0-9._#-]{0,63}$ ]] || { echo "review-precheck: bad unit id: $unit" >&2; exit 2; }
-contract=""; fixc=""; only=""; affected=()
+contract=""; fixc=""; only=""; br=0; affected=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --contract) [ "$#" -ge 2 ] || usage; contract="$2"; shift 2 ;;
     --fix-contract) [ "$#" -ge 2 ] || usage; fixc="$2"; shift 2 ;;
     --affected) [ "$#" -ge 2 ] || usage; affected+=("$2"); shift 2 ;;
     --criterion) [ "$#" -ge 2 ] || usage; only="$2"; shift 2 ;;
+    --blast-radius) br=1; shift ;;
     *) usage ;;
   esac
 done
 [ -z "$only" ] || [[ "$only" =~ ^[0-9]+$ ]] || usage
 [ -z "$only" ] || [ -n "$contract" ] || usage
+[ "$br" = 0 ] || [ -z "$only" ] || usage
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 lib="$dir/../hooks/scripts/lib"
 . "$lib/sensitive-paths.sh" 2>/dev/null || exit 2
@@ -188,6 +190,13 @@ else
 fi
 result=pass; [ "$fails" -gt 0 ] && result=fail
 { echo "precheck: result=$result unit=$unit range=$base..$head fails=$fails deferred=$deferred judge=$judge"; cat "$out"; } > "$W/packet"
+if [ "$br" = 1 ]; then
+  if brout="$(bash "$dir/blast-radius.sh" "$base" 2>/dev/null)" && [ -n "$brout" ]; then
+    while IFS= read -r l || [ -n "$l" ]; do printf 'br %s\n' "$l"; done <<< "$brout" >> "$W/packet"
+  else
+    echo "br blast-radius: unavailable" >> "$W/packet"
+  fi
+fi
 mkdir -p "$dot/bookkeeping" && cp "$W/packet" "$dot/bookkeeping/$unit.precheck"
 cat "$W/packet"
 exit 0
