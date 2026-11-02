@@ -36,10 +36,10 @@ Fix two bullets, no others:
    exit: 0
    stdout: `0`
    mutation: skip `--update` → 13.
-6. run: `g="-F --grep=(l2-release)"; echo $(git log --oneline $g | wc -l) $(git log --format= --name-only $g | grep -vxcE '\.claude-plugin/plugin\.json|package\.json|CHANGELOG\.md|\.claude/.+|')`
+6. run: `g="-F --grep=(l2-release)"; echo $(git log --oneline $g | wc -l) $(git log --format= --name-only $g | grep . | grep -vxcE '\.claude-plugin/plugin\.json|package\.json|CHANGELOG\.md|\.claude/.+')`
    exit: 0
    stdout: `1 0`
-   mutation: also commit `agents/scribe.md` → `1 1`.
+   mutation: also commit `agents/scribe.md` → `1 1`, any grep.
 7. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters ':!.claude/agent-memory'`
    exit: 0
    stdout: empty
