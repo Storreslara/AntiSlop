@@ -112,6 +112,19 @@ test_pending_review_idempotent() {
   [ "$current_content" = "$original_content" ] && pass "C3: pending-review not clobbered" || bad "C3: pending-review was overwritten"
 }
 
+# l2-sg1: state_replace_pending_review replaces whatever stands at the flag path, and fails on a directory.
+test_replace_pending_review() {
+  local flag_file="${dot}/.pending-review.rp-1"
+  printf 'defer: later\n' > "$flag_file"; chmod 600 "$flag_file"
+  if state_replace_pending_review rp-1 "new agent=rp-1" && [ "$(cat "$flag_file")" = "new agent=rp-1" ] \
+     && [ "$(stat -c %a "$flag_file")" = 644 ]; then pass "(l2-c1) replace over a defer: flag: new content, mode 644"
+  else bad "(l2-c1) replace over a defer: flag"; fi
+  mkdir "${dot}/.pending-review.rp-2"
+  if ! declare -F state_replace_pending_review >/dev/null || state_replace_pending_review rp-2 x 2>/dev/null \
+     || [ -n "$(ls -A "${dot}/.pending-review.rp-2")" ]; then bad "(l2-c2) replace over a directory"
+  else pass "(l2-c2) replace over a directory returns non-zero, writes nothing into it"; fi
+}
+
 # == CONSTRAINT 4: .session-baseline create-only-if-absent ==
 # A .session-baseline is created once at session start and never overwritten.
 test_session_baseline_idempotent() {
@@ -336,6 +349,7 @@ test_unit_id_grammar() {
 test_consumed_before_rm
 test_reviewer_stop_clears
 test_pending_review_idempotent
+test_replace_pending_review
 test_session_baseline_idempotent
 test_directed_excluded_from_globs
 test_decision_zero_identity_write

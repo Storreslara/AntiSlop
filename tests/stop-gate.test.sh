@@ -250,6 +250,74 @@ run "$d" "$lpt"
 if [ "$rc" = 0 ] && [ -f "$d/.claude/.pending-review.lp-1" ]; then ok "(l2-g4) first record for the writer's id wins (medium, then small)"
 else bad "(l2-g4) rc=$rc"; fi
 
+# l2-sg1: the marker check runs before the WIP sentinel; the flag is replaced, never kept or followed.
+d="$(project l2-s1 enforce)"
+touch -d '2026-01-01 00:00:00' "$d/.claude/$r/.writer-dispatch-stamp"
+printf 'PASS u1 x\n' > "$d/.claude/$r/u1.pass"; touch -d '2026-01-02 00:00:00' "$d/.claude/$r/u1.pass"
+printf 'red\n' > "$d/.claude/wip-handoff.lp-1"
+run "$d" "$lp"
+if [ "$rc" = 2 ] && [ -f "$d/.claude/.pending-review.lp-1" ] && [ ! -e "$d/.claude/wip-handoff.lp-1" ] \
+   && grep -qE '^[0-9TZ:-]+ wip-ignored d6-trip agent=lp-1$' "$d/.claude/wip-audit.log"; then
+  ok "(l2-s1) forged marker plus sentinel: sentinel deleted and logged, flag written, stop blocks"
+else bad "(l2-s1) rc=$rc files=$(ls -A "$d/.claude")"; fi
+
+d="$(project l2-s2 enforce)"
+touch -d '2026-01-02 00:00:00' "$d/.claude/$r/.writer-dispatch-stamp"
+printf 'PASS u1 x\n' > "$d/.claude/$r/u1.pass"; touch -d '2026-01-01 00:00:00' "$d/.claude/$r/u1.pass"
+printf 'red\n' > "$d/.claude/wip-handoff.lp-1"
+run "$d" "$lp"
+if [ "$rc" = 0 ] && [ ! -e "$d/.claude/.pending-review.lp-1" ] && [ ! -e "$d/.claude/wip-handoff.lp-1" ] \
+   && grep -q 'agent=lp-1 reason=red$' "$d/.claude/wip-audit.log"; then ok "(l2-s2) untripped sentinel is honoured, no flag"
+else bad "(l2-s2) rc=$rc files=$(ls -A "$d/.claude")"; fi
+
+d="$(project l2-s3 enforce)"
+printf 'skip: x\n' > "$d/.claude/.pending-review.lp-1"
+run "$d" "$lp"; rc_lp="$rc"
+run "$d" "$main"
+if [ "$rc_lp" = 0 ] && [ "$rc" = 2 ] && grep -qE '^[0-9TZ:-]+ agent=lp-1$' "$d/.claude/.pending-review.lp-1"; then
+  ok "(l2-s3) a pre-made skip: flag is replaced and the main Stop blocks"
+else bad "(l2-s3) lp=$rc_lp main=$rc"; fi
+
+d="$(project l2-s4 enforce)"
+printf 'keep\n' > "$tmproot/l2-s4-target"
+ln -s "$tmproot/l2-s4-target" "$d/.claude/.pending-review.lp-1"
+run "$d" "$lp"
+f="$d/.claude/.pending-review.lp-1"
+if [ "$rc" = 0 ] && [ "$(cat "$tmproot/l2-s4-target")" = keep ] && [ -f "$f" ] && [ ! -L "$f" ] \
+   && [ "$(stat -c %a "$f")" = 644 ]; then ok "(l2-s4) a symlinked flag path is replaced by a regular 644 file, target unchanged"
+else bad "(l2-s4) rc=$rc target=$(cat "$tmproot/l2-s4-target") flag=$(ls -l "$f")"; fi
+
+lane_case l2-s5 enforce small same
+touch -d '2026-01-02 00:00:00' "$d/.claude/$r/.writer-dispatch-stamp"
+printf 'PASS u1 x\n' > "$d/.claude/$r/u1.pass"; touch -d '2026-01-01 00:00:00' "$d/.claude/$r/u1.pass"
+run "$d" "$lpt"
+if [ "$rc" = 0 ] && [ ! -e "$d/.claude/.pending-review.lp-1" ] \
+   && grep -q 'small-lane agent=lp-1 no-flag$' "$d/.claude/review-audit.log"; then ok "(l2-s5) untripped small-lane stop still writes no flag"
+else bad "(l2-s5) rc=$rc files=$(ls -A "$d/.claude")"; fi
+
+d="$(project l2-s6 enforce)"
+run "$d" "$lp"; rc_lp="$rc"
+printf 'defer: later\n' > "$d/.claude/.pending-review.lp-2"
+run "$d" "$rv"
+if [ "$rc_lp" = 0 ] && [ "$rc" = 0 ] && ! ls -A "$d/.claude" | grep -q '^\.pending-review'; then
+  ok "(l2-s6) the reviewer's stop still clears every flag"
+else bad "(l2-s6) lp=$rc_lp rv=$rc files=$(ls -A "$d/.claude")"; fi
+
+d="$(project l2-s7 enforce)"
+mkdir "$d/.claude/.pending-review.lp-1"
+run "$d" "$lp"
+if [ "$rc" = 2 ] && grep -qF '.claude/.pending-review.lp-1' <<< "$err"; then ok "(l2-s7) a flag path that is a directory blocks, naming it"
+else bad "(l2-s7) rc=$rc err=$err"; fi
+
+d="$(project l2-s8 enforce)"
+mkdir "$tmproot/l2-s8-outside"
+ln -s "$tmproot/l2-s8-outside" "$d/.claude/.pending-review.lp-1"
+run "$d" "$lp"
+f="$d/.claude/.pending-review.lp-1"
+if [ "$rc" = 0 ] && [ -z "$(ls -A "$tmproot/l2-s8-outside")" ] && [ -f "$f" ] && [ ! -L "$f" ]; then
+  ok "(l2-s8) a symlink to an outside directory: nothing written there, flag regular"
+else bad "(l2-s8) rc=$rc outside=$(ls -A "$tmproot/l2-s8-outside") flag=$(ls -ld "$f")"; fi
+
 # rv-flagprose: the prose names the flag channel and the small-lane route, on the source and deployed copy.
 sq() { tr -s ' \n' ' ' < "$1" | grep -qF -- "$2"; }
 pin() { # $1 = id, $2 = phrase, $3.. = files
