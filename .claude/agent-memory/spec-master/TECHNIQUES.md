@@ -31,3 +31,4 @@
 - [python -I writes bytecode](technique_python_isolated_mode_writes_bytecode.md) — -I ignores PYTHONDONTWRITEBYTECODE; use -B or eval/ gets an untracked __pycache__
 - [Dispatch link; git forgery env](technique_dispatch_link_and_git_forgery_env.md) — meta.json toolUseId = PreToolUse tool_use_id; NO_REPLACE misses grafts, use a non-existent GIT_GRAFT_FILE
 - [Marker sweep: head hides summary](technique_marker_sweep_head_hides_summary.md) — grep|head on --notes drops the spec=N summary; missing summary ≠ no note; background + tail --pid
+- [update-index: one flag per call](technique_update_index_one_flag_per_call.md) — combined --no-skip-worktree --assume-unchanged leaves skip-worktree set; split the calls
