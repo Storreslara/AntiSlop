@@ -110,6 +110,17 @@ Attribution of the 52 opus verdicts:
 
 `MAX_CHANGED_LINES=40` and `MAX_CHANGED_FILES=3` were deliberately left unchanged (operator ruling 2026-08-03, decision option (a) per issue #232). The ~0% figure cited in prior efficiency-pass discussions belonged to the predecessor ADR-0006 scheme that this ADR already retired; no Pass 4 re-files it.
 
+### Amendment (2026-11-04): path rule
+
+Operator ruling 2026-11-04: a diff whose every changed file is in the low-risk path class prints `sonnet` at any size. The class is `LOW_RISK_PATHS` in `hooks/scripts/lib/sensitive-paths.sh`:
+
+- `^docs/.*\.md$`
+- `^(README|CHANGELOG|CONTEXT|CONTRIBUTING)\.md$`
+- `^tests/`
+- `^eval/(.+/)?fixtures/`
+
+Order is unchanged and the new route comes last: FAIL record, range guards, then per file the C-quoted, sensitive and binary checks, then the zero-file guard, then `sonnet` if every file was low-risk. `tests/validate.sh` matches `^tests/` but is sensitive, so it stays `opus`. A mixed diff falls back to the unchanged size rule (40 lines, 3 files), counting every file and line. `CLAUDE.md`, `templates/`, `skills/`, `commands/`, non-`.md` files under `docs/` and `eval/abtest/checks/` are left out on purpose. Unit lanes (`bin/unit-size.sh`) are unchanged.
+
 ## Related
 - Amends ADR-0006 (signal-gated sonnet on the reviewer gate) — its conjunctive
   structure survives; only condition (1)'s prediction-time proxy is replaced by

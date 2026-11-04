@@ -24,7 +24,18 @@ done
 # (b) reviewer-tier.sh no longer defines the class itself and sources the lib.
 grep -q '^SENSITIVE_PATHS=(' "$ROOT/hooks/scripts/reviewer-tier.sh" && bad "(b) reviewer-tier.sh still defines SENSITIVE_PATHS" || ok "(b) class defined once"
 grep -qxF '  && . "$(dirname "${BASH_SOURCE[0]}")/lib/sensitive-paths.sh"; } >/dev/null 2>&1 || { echo opus; exit 0; }' "$ROOT/hooks/scripts/reviewer-tier.sh" && ok "(b) reviewer-tier.sh sources the lib with both streams hidden, opus when it cannot" || bad "(b) source line missing"
-grep -qxF 'declare -F touches_sensitive_path unit_id_sanitize state_unit_marker_exists >/dev/null || { echo opus; exit 0; }' "$ROOT/hooks/scripts/reviewer-tier.sh" && ok "(b) reviewer-tier.sh checks the functions are defined" || bad "(b) declare -F guard missing"
+grep -qxF 'declare -F touches_sensitive_path touches_low_risk_path unit_id_sanitize state_unit_marker_exists >/dev/null || { echo opus; exit 0; }' "$ROOT/hooks/scripts/reviewer-tier.sh" && ok "(b) reviewer-tier.sh checks the functions are defined" || bad "(b) declare -F guard missing"
+
+# (a2) the low-risk class: 4 patterns, defined only in the lib.
+[ "${#LOW_RISK_PATHS[@]}" = 4 ] && ok "(a2) 4 patterns" || bad "(a2) pattern count ${#LOW_RISK_PATHS[@]}"
+for p in docs/x.md README.md tests/a.sh eval/abtest/fixtures/f; do
+  touches_low_risk_path "$p" && ok "(a2) low-risk $p" || bad "(a2) not low-risk: $p"
+done
+for p in CLAUDE.md docs/x.sh templates/t.md eval/abtest/checks/c.js src/a.md; do
+  touches_low_risk_path "$p" && bad "(a2) wrongly low-risk: $p" || ok "(a2) not low-risk $p"
+done
+# (b2) reviewer-tier.sh does not define the low-risk class itself.
+grep -q '^LOW_RISK_PATHS=(' "$ROOT/hooks/scripts/reviewer-tier.sh" && bad "(b2) reviewer-tier.sh defines LOW_RISK_PATHS" || ok "(b2) low-risk class defined once"
 
 # (c) us_section / us_entries read only the named section, outside fences.
 cat > "$T/c.md" << 'MD'

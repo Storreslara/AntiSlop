@@ -1471,8 +1471,9 @@ the reviewer's `sonnet`/`opus` model is
   `hooks/scripts/reviewer-tier.sh <task-id> <git-range>`, a deterministic,
   fail-closed script (not a registered hook — deliberately absent from
   `hooks/hooks.json`; it's an orchestrator-invoked helper). It prints
-  `sonnet` only when the diff is ≤40 changed lines AND ≤3 changed files AND
-  touches no sensitive path class; otherwise `opus`. Replaces the earlier
+  `sonnet` only when every changed file is in the **low-risk path class**
+  (any size) or the diff is ≤40 changed lines AND ≤3 changed files; a
+  sensitive path, a `.fail` record or an unmeasurable input is `opus` first. Replaces the earlier
   ADR-0006 scheme where `task-master` guessed reviewer tier from its own
   pre-implementation `Suggested model: haiku` tag — a prediction that was
   reachable roughly 0% of the time in practice. This was ADR-0009's historical
@@ -1484,6 +1485,17 @@ the reviewer's `sonnet`/`opus` model is
   commits (13.3%), inside the predicted band. See
   [ADR 0009](adr/0009-reviewer-tier-measured-eligibility.md), which
   amends [ADR 0006](adr/0006-reviewer-gate-sonnet-for-mechanical-units.md).
+
+**low-risk path class**:
+the four patterns in `LOW_RISK_PATHS`
+  (`hooks/scripts/lib/sensitive-paths.sh`, the only place they are defined):
+  `^docs/.*\.md$`, `^(README|CHANGELOG|CONTEXT|CONTRIBUTING)\.md$`, `^tests/`,
+  `^eval/(.+/)?fixtures/`. `reviewer-tier.sh` prints `sonnet` at any size when
+  every changed file matches, after the FAIL-record, sensitive-path, binary and
+  zero-file exits; a mixed diff gets the size rule. `CLAUDE.md`, `templates/`,
+  `skills/`, `commands/`, non-`.md` files under `docs/` and `eval/abtest/checks/`
+  are not in it. Unit lanes (`bin/unit-size.sh`) do not use it. See
+  [ADR 0009](adr/0009-reviewer-tier-measured-eligibility.md).
 
 **inert-key defect**:
 (unit item18-2, 2026-09-25; first instance resolved in unit #476) — a failure mode 

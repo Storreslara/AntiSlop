@@ -57,14 +57,14 @@ run_case() {
   fi
 }
 
-r_small=$(add_commit small docs/small.md:5)
+r_small=$(add_commit small src/small.md:5)
 r_hooks=$(add_commit hooksdir hooks/scripts/probe.sh:5)
-r_l39=$(add_commit l39 docs/l39.md:39)
-r_l40=$(add_commit l40 docs/l40.md:40)
-r_l41=$(add_commit l41 docs/l41.md:41)
-r_f2=$(add_commit f2 docs/f2a.md:1 docs/f2b.md:1)
-r_f3=$(add_commit f3 docs/f3a.md:1 docs/f3b.md:1 docs/f3c.md:1)
-r_f4=$(add_commit f4 docs/f4a.md:1 docs/f4b.md:1 docs/f4c.md:1 docs/f4d.md:1)
+r_l39=$(add_commit l39 src/l39.md:39)
+r_l40=$(add_commit l40 src/l40.md:40)
+r_l41=$(add_commit l41 src/l41.md:41)
+r_f2=$(add_commit f2 src/f2a.md:1 src/f2b.md:1)
+r_f3=$(add_commit f3 src/f3a.md:1 src/f3b.md:1 src/f3c.md:1)
+r_f4=$(add_commit f4 src/f4a.md:1 src/f4b.md:1 src/f4c.md:1 src/f4d.md:1)
 
 # Markers are committed in a range of their own the moment they are seeded:
 # later fixtures use `git add -A`, which would otherwise sweep them into the
@@ -122,7 +122,7 @@ run_case "(ab) a persona-protocol .md.txt does not end in .md" sonnet unit-1 "$(
 # path shape git rewrites (rename compaction, C-quoting) can slip a sensitive
 # path past them. These assert the anchors do not UNDER-match.
 echo "-- numstat path shapes --"
-git -C "$repo" mv docs/small.md hooks/scripts/moved.md
+git -C "$repo" mv src/small.md hooks/scripts/moved.md
 r_rename=$(snap rename-into-hooks)
 run_case "(ac) a file renamed into hooks/"    opus   unit-1 "$r_rename"
 
@@ -150,12 +150,12 @@ run_case "(ah) an empty task id"                      opus ""     "$r_small"
 # unexercised. These replace a file's contents with disjoint lines, making the
 # deletions the only thing that can carry the total past the limit.
 echo "-- the deleted term of the line sum --"
-seq 1 21 > "$repo/docs/churn41.md"; snap churn41-base > /dev/null
-seq 100 119 > "$repo/docs/churn41.md"; r_churn41=$(snap churn41)
+seq 1 21 > "$repo/src/churn41.md"; snap churn41-base > /dev/null
+seq 100 119 > "$repo/src/churn41.md"; r_churn41=$(snap churn41)
 run_case "(ai) 20 added + 21 deleted (41, above the limit)" opus   unit-1 "$r_churn41"
 
-seq 1 20 > "$repo/docs/churn40.md"; snap churn40-base > /dev/null
-seq 100 119 > "$repo/docs/churn40.md"; r_churn40=$(snap churn40)
+seq 1 20 > "$repo/src/churn40.md"; snap churn40-base > /dev/null
+seq 100 119 > "$repo/src/churn40.md"; r_churn40=$(snap churn40)
 run_case "(aj) 20 added + 20 deleted (40, at the limit)"    sonnet unit-1 "$r_churn40"
 
 echo "-- unmeasurable content --"
@@ -252,6 +252,33 @@ git -C "$repo2" commit -qm small
 r_nomarkers="$(git -C "$repo2" rev-parse HEAD~1)..$(git -C "$repo2" rev-parse HEAD)"
 run_at "(aw) no reviewed-marker directory at all" opus unit-1 "$r_nomarkers" "$repo2" -
 
+# tier-path-rule: a diff whose every file is in the low-risk path class prints sonnet at any size;
+# every opus exit still wins, and a mixed diff falls back to the size rule.
+echo "-- low-risk path class --"
+r_pr1=$(add_commit pr1 docs/big.md:41)
+run_case "(pr1) docs-only, 41 lines"                        sonnet unit-1 "$r_pr1"
+run_case "(pr2) docs-only, 4 files"                         sonnet unit-1 "$(add_commit pr2 docs/p2a.md:1 docs/p2b.md:1 docs/p2c.md:1 docs/p2d.md:1)"
+r_pr3=$(add_commit pr3 tests/x.test.sh:200)
+run_case "(pr3) tests-only, 200 lines"                      sonnet unit-1 "$r_pr3"
+run_case "(pr4) eval fixture, 60 lines"                     sonnet unit-1 "$(add_commit pr4 eval/abtest/fixtures/f.txt:60)"
+r_pr5=$(add_commit pr5 docs/a.md:41 src/a.js:1)
+run_case "(pr5) docs 41 + src 1 falls back to the size rule" opus  unit-1 "$r_pr5"
+run_case "(pr6) docs 1 + src 1 stays small"                 sonnet unit-1 "$(add_commit pr6 docs/a6.md:1 src/a6.js:1)"
+run_case "(pr7) docs + tests/validate.sh is sensitive"      opus   unit-1 "$(add_commit pr7 docs/a7.md:1 tests/validate.sh:2)"
+r_pr8=$(add_commit pr8 docs/a8.md:1)
+run_case "(pr8) docs-only with a FAIL record"               opus   unit-fail "$r_pr8"
+mkdir -p "$repo/tests/fixtures"; printf '\000\001\002\377' > "$repo/tests/fixtures/b.bin"
+run_case "(pr9) binary fixture is unmeasurable"             opus   unit-1 "$(snap pr9)"
+r_pr10a=$(add_commit pr10a CLAUDE.md:41)
+r_pr10b=$(add_commit pr10b docs/s.sh:41)
+r_pr10c=$(add_commit pr10c templates/t.md:41)
+run_case "(pr10) CLAUDE.md is not low-risk"                 opus   unit-1 "$r_pr10a"
+run_case "(pr10) non-.md under docs/ is not low-risk"       opus   unit-1 "$r_pr10b"
+run_case "(pr10) templates/ is not low-risk"                opus   unit-1 "$r_pr10c"
+add_commit pr11-base hooks/x.sh:1 > /dev/null
+git -C "$repo" mv hooks/x.sh docs/x.md
+run_case "(pr11) hooks/x.sh renamed to docs/x.md"           opus   unit-1 "$(snap pr11)"
+
 # --- Mutation controls (acceptance criterion 4) ---------------------------
 # reviewer-tier.sh sources nothing, so a plain copy is a complete runnable
 # mutant - no lib/ sibling to carry along. Each control asserts the named case
@@ -333,6 +360,14 @@ if mutate projectdir-dot 's|^  project_dir="\$(git rev-parse --show-toplevel.*| 
     run_at "(mc12) project-dir resolution reverted to '.': case (au) flips to" \
       sonnet unit-fail "$r_one" "$repo/sub" - "$MUTANT"
   fi
+fi
+if mutate low-risk-off '/^if \[ "\$low" -eq "\$files" \]/d'; then
+  run_case "(mc14) all-low-risk sonnet branch deleted: case (pr1) flips to" \
+    opus unit-1 "$r_pr1" "$MUTANT"
+fi
+if mutate low-risk-any 's/"\$low" -eq "\$files"/"$low" -gt 0/'; then
+  run_case "(mc15) every file weakened to any file: case (pr5) flips to" \
+    sonnet unit-1 "$r_pr5" "$MUTANT"
 fi
 # st-u1: the path class lives in lib/sensitive-paths.sh, so this control
 # mutates the lib copy beside an unmutated copy of the script, then restores it.

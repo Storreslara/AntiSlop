@@ -11,7 +11,8 @@
 # tests/reviewer-tier.test.sh, which validate.sh registers explicitly.
 #
 # Fail-closed by construction: anything unmeasurable, sensitive or oversized
-# prints `opus`. The result is a NECESSARY condition for sonnet review, never a
+# prints `opus`; a diff of only docs, fixtures and tests prints `sonnet` at any size.
+# The result is a NECESSARY condition for sonnet review, never a
 # sufficient one - the orchestrator may downgrade sonnet->opus, never upgrade.
 set -euo pipefail
 # A library that is missing, unreadable, empty or truncated leaves the FAIL-record
@@ -22,7 +23,7 @@ set -euo pipefail
 # otherwise put a line in front of the result, and callers read the first line.
 { . "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh" \
   && . "$(dirname "${BASH_SOURCE[0]}")/lib/sensitive-paths.sh"; } >/dev/null 2>&1 || { echo opus; exit 0; }
-declare -F touches_sensitive_path unit_id_sanitize state_unit_marker_exists >/dev/null || { echo opus; exit 0; }
+declare -F touches_sensitive_path touches_low_risk_path unit_id_sanitize state_unit_marker_exists >/dev/null || { echo opus; exit 0; }
 
 MAX_CHANGED_LINES=40
 MAX_CHANGED_FILES=3
@@ -69,6 +70,7 @@ numstat="$(git -c core.quotepath=false -c diff.relative=false diff --no-renames 
 
 files=0
 lines=0
+low=0
 while IFS=$'\t' read -r added deleted path; do
   [ -n "$path" ] || continue
   files=$((files + 1))
@@ -82,13 +84,20 @@ while IFS=$'\t' read -r added deleted path; do
   # Binary files report `-` instead of a count, so their size is unmeasurable.
   case "${added}${deleted}" in *[!0-9]*) opus ;; esac
   lines=$((lines + added + deleted))
+  if touches_low_risk_path "$path"; then
+    low=$((low + 1))
+  fi
 done <<< "$numstat"
 
 # A range that resolves but measures nothing (no changed files) tells us
 # nothing about the work under review, so it is unmeasurable too.
 [ "$files" -gt 0 ] || opus
 
-# 4 - size, strictly greater-than: exactly 40 lines and exactly 3 files are
+# 4 - every file low-risk (docs, fixtures, tests): sonnet at any size. Placed after
+# every opus exit above, so it can only add a way to reach sonnet.
+if [ "$low" -eq "$files" ]; then echo sonnet; exit 0; fi
+
+# 5 - size, strictly greater-than: exactly 40 lines and exactly 3 files are
 # both still eligible.
 if [ "$files" -gt "$MAX_CHANGED_FILES" ]; then
   opus
