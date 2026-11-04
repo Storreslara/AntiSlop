@@ -283,11 +283,12 @@ don't guess:
   the field `antislop:pathfinder` (a manual slicing aid)
   and spec-master's publish step read to know where
   issues go — get it wrong and both break for this project.
-- `reviewGating.mode` — ask once (AskUserQuestion): review gating `enforce`
-  (recommended; reviewer verdicts gate turn-end and the next dispatch) or
-  `off` (verdicts advisory, review-enforcement hooks inert; `protected-paths`
-  and test+lint stay armed). Write the key only for `off`; `enforce` is the
-  absent default. Later changes go through `/antislop:gate`.
+- `reviewGating.mode` — ask once (AskUserQuestion): review gating `off`
+  (recommended; the shipped default for a fresh install: verdicts advisory,
+  review-enforcement hooks inert; `protected-paths` and test+lint stay armed)
+  or `enforce` (reviewer verdicts gate turn-end and the next dispatch).
+  Always write the key: "off" or "enforce". A fresh skeleton already carries
+  `off`, so an unwritten `enforce` answer would silently stay `off`. Later changes go through `/antislop:gate`.
 - `personaSelection` — from step 1.
 - `pluginVersion` — this plugin's current version (same value used for the
   file stamps in step 2).
