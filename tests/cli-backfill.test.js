@@ -3112,6 +3112,68 @@ check('deepMerge dedupes with primitives in arrays (SameValueZero equality appli
   assert.deepStrictEqual(target.nums, [1, 2, 3, 4]);
 });
 
+// --- reviewGating skeleton default (gate-default-off)
+{
+  const gdoCli = path.join(REPO_ROOT, 'bin', 'cli.js');
+  const gdoRun = (cwd, args) => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-gdo-home-'));
+    try {
+      return spawnSync('node', [gdoCli].concat(args), { cwd, env: Object.assign({}, process.env, { HOME: home }), encoding: 'utf8' });
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  };
+  const gdoSeed = (cwd) => {
+    fs.mkdirSync(path.join(cwd, '.claude'), { recursive: true });
+    fs.writeFileSync(
+      path.join(cwd, '.claude', 'persona-config.json'),
+      JSON.stringify({
+        pluginVersion: '0.0.1',
+        personaSelection: ['scribe'],
+        gatedAgents: ['lead-programmer'],
+        substitutions: { graphMcpLaunch: { command: 'npx', args: ['code-review-graph-mcp'] } },
+      }, null, 2) + '\n'
+    );
+  };
+  const gdoCfg = (cwd) => JSON.parse(fs.readFileSync(path.join(cwd, '.claude', 'persona-config.json'), 'utf8'));
+  const gdoTmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-gdo-'));
+
+  check('(gdo-1) --yes fresh install writes reviewGating.mode "off"', () => {
+    const cwd = gdoTmp();
+    try {
+      const r = gdoRun(cwd, ['--yes']);
+      assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+      assert.deepStrictEqual(gdoCfg(cwd).reviewGating, { mode: 'off' });
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  check('(gdo-2) --update on a config without the key leaves it absent', () => {
+    const cwd = gdoTmp();
+    try {
+      gdoSeed(cwd);
+      const r = gdoRun(cwd, ['--update']);
+      assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+      assert.ok(!('reviewGating' in gdoCfg(cwd)), 'reviewGating must stay absent after --update');
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  check('(gdo-3) --overwrite --yes on a config without the key leaves it absent', () => {
+    const cwd = gdoTmp();
+    try {
+      gdoSeed(cwd);
+      const r = gdoRun(cwd, ['--overwrite', '--yes']);
+      assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+      assert.ok(!('reviewGating' in gdoCfg(cwd)), 'reviewGating must stay absent after --overwrite');
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+}
+
 if (failures > 0) {
   console.error(`\n${failures} test(s) failed.`);
   process.exit(1);

@@ -2667,6 +2667,11 @@ async function main() {
       // agents/reviewer.md), which is what keeps that branch's
       // preserve-every-field contract intact.
       humanReviewMode: 'critical',
+      // Fresh installs ship review gating off (ADR-0038 amendment). Like
+      // humanReviewMode, deliberately NOT backfilled into the existing-config
+      // branch or --update: the reader rule is unchanged (absent means
+      // enforce), so already-installed projects stay on enforce.
+      reviewGating: { mode: 'off' },
       // Matches agents/lead-programmer.md's `model: haiku` frontmatter today
       // (see tests/default-implementer-model.test.js, asserted programmatically
       // against that frontmatter, not hardcoded on both sides). Like

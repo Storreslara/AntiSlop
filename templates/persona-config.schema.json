@@ -153,7 +153,7 @@
           "type": "string",
           "enum": ["enforce", "off"],
           "default": "enforce",
-          "description": "Resolution rule: only the exact string off disables; absent, unreadable or any other value resolves to enforce."
+          "description": "Resolution rule: only the exact string off disables; absent, unreadable or any other value resolves to enforce. A fresh install from bin/cli.js writes \"off\" into the skeleton; --update and --overwrite never add the key."
         }
       }
     }
