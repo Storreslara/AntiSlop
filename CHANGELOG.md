@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- **Fresh installs ship review gating off (gate-default-off).** `bin/cli.js` writes `reviewGating: { mode: "off" }` into the fresh-install skeleton only; `--update` and `--overwrite` never add the key, and the reader rule is unchanged (absent or junk means `enforce`), so existing installs stay on `enforce`. `/install-antislop` now always writes the key and lists `off` first; ADR-0038 amended, trust-model row 13 now points at `bin/harness-integrity.sh`.
 - **Low-risk path class in the reviewer tier (tier-path-rule).** `hooks/scripts/reviewer-tier.sh` prints `sonnet` at any size when every changed file is docs, fixtures or tests (`LOW_RISK_PATHS` in `hooks/scripts/lib/sensitive-paths.sh`); a FAIL record, a sensitive path and every unmeasurable input still print `opus`, and a mixed diff keeps the size rule.
 - **`--arms` option for the A/B runner (ab-arms).** `eval/abtest/run-matrix.sh --arms A|B|A,B` runs only the listed arms (default `A,B`, unchanged); runs of an unlisted arm are not planned, started or counted, and any other value exits 2.
 - **abtest-checks date assertion (ci-datefix).** `tests/abtest-checks.test.sh` accepts both `Z` and `+00:00` spellings of the fixed baseline commit date, which newer git prints as `Z`.

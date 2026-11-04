@@ -229,7 +229,7 @@ Amended (0.32.0): `stop-gate.sh` exits at once under `off` and runs no test+lint
   the protection gates (`protected-paths.sh`, `harness-integrity-gate.sh` and
   config-drift detection, `reviewed-path-gate.sh`, the reviewer-dispatch
   identity and privileged-name guards, and the stop-gate test+lint check)
-  stay armed. Absent or junk values mean `enforce`. At a unit's [[ladder exhaustion]]
+  stay armed. Absent or junk values mean `enforce`; a fresh install ships the key as `off`, and `--update` never adds it. At a unit's [[ladder exhaustion]]
   on advisory FAILs the orchestrator reports `Unresolved advisory findings` and
   carries on; scribe closes issues on a quoted reviewer PASS labelled
   `advisory PASS (review gating off)`. _Avoid_: "gateless" in technical

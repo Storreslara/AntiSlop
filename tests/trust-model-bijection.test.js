@@ -21,11 +21,11 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const DOC_PATH = path.join(REPO_ROOT, 'docs/trust-model.md');
 const HOOK_SCRIPTS_DIR = path.join(REPO_ROOT, 'hooks/scripts');
 
-// The two rows documenting plan architecture rather than a check that
+// The row documenting plan architecture rather than a check that
 // exists today (see docs/plans/2026-08-25-harness-trust-gaps.md, Step 8).
 const EXEMPT_CHECKED_BY_PREFIX = '**';
 const EXPECTED_SELF_REPORTED_COUNT = 10;
-const EXPECTED_EXEMPT_COUNT = 2;
+const EXPECTED_EXEMPT_COUNT = 1;
 
 let failures = 0;
 

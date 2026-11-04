@@ -283,4 +283,39 @@ else
   bad "T19 mutation not applied or did not flip both cases (before=$before_n after=$after_n t5=$mut_out_t5 t7=$mut_out_t7)"
 fi
 
+
+# T20-T22: the fresh-install skeleton ships reviewGating.mode "off" (gate-default-off).
+# T20: baseline without the file, tree skeleton off -> nothing to compare.
+dir="$tmproot/t20"; mkdir -p "$dir"
+git -C "$dir" init -q
+git -C "$dir" -c user.email=t@example.com -c user.name=t commit -q --allow-empty -m baseline
+sha="$(git -C "$dir" rev-parse HEAD)"
+mkdir -p "$dir/.claude"
+printf '{"reviewGating":{"mode":"off"}}' > "$dir/.claude/persona-config.json"
+out="$(bash bin/harness-integrity.sh "$dir" "$sha")"
+if echo "$out" | grep -q ' config=ok '; then
+  ok "T20 skeleton off with no baseline file is config=ok"
+else
+  bad "T20 expected config=ok, got: $out"
+fi
+
+# T21: skeleton off committed and unchanged -> ok.
+read -r dir sha < <(make_repo t21 '{"reviewGating":{"mode":"off"}}')
+out="$(bash bin/harness-integrity.sh "$dir" "$sha")"
+if echo "$out" | grep -q ' config=ok '; then
+  ok "T21 committed skeleton off, unchanged, is config=ok"
+else
+  bad "T21 expected config=ok, got: $out"
+fi
+
+# T22: skeleton off changed to enforce -> drift.
+read -r dir sha < <(make_repo t22 '{"reviewGating":{"mode":"off"}}')
+printf '{"reviewGating":{"mode":"enforce"}}' > "$dir/.claude/persona-config.json"
+out="$(bash bin/harness-integrity.sh "$dir" "$sha")"
+if echo "$out" | grep -q ' config=drift ' && echo "$out" | grep -q 'fields=reviewGating.mode'; then
+  ok "T22 skeleton off to enforce registers as drift"
+else
+  bad "T22 expected config=drift fields=reviewGating.mode, got: $out"
+fi
+
 exit "$fail"

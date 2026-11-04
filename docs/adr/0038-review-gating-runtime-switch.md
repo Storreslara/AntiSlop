@@ -67,3 +67,14 @@ The Writer/Reviewer split is now conditional on `enforce`.
 - `humanReviewMode` remains the setting for `enforce` projects; `off` here
   overrides it. ADR-0036's keep-as-is disposition of
   `human-decision-gate.sh` is unaffected.
+
+## Amendment (2026-11-04): fresh installs ship off
+
+The skeleton `personaConfig` that `bin/cli.js` writes on a fresh install now
+carries `reviewGating: { mode: "off" }`, following the precedent of the
+`humanReviewMode` skeleton default. The reader rule is unchanged: absent,
+unreadable or any other value still resolves to `enforce`, so existing
+installs stay on `enforce`. `--update` and `--overwrite` never add the key.
+Config-drift detection treats any later change from the committed `off` as
+drift (`drift fields=reviewGating.mode`). The decision recorded above is
+otherwise unchanged.

@@ -103,7 +103,7 @@ personas as concurrent teammates instead; off by default.
 | `defaultImplementerModel` | `haiku` | Tier the escalation ladder starts from. |
 | `orchestratorModel` | `sonnet` | Model of the main session (the orchestrator): `sonnet`, `opus`, `haiku` or `inherit` (your own session model). Apply a change with `node <plugin>/bin/cli.js --update --force-render`. |
 | `humanReviewMode` | `critical` | Retired (0.32.0): nothing escalates; only session-start's microworld warning reads it. |
-| `reviewGating.mode` | `enforce` | `off` makes reviewer verdicts advisory and the review gates inert. Flip with `/antislop:gate off` or `on`. |
+| `reviewGating.mode` | `enforce` (`off` on a fresh install) | `off` makes reviewer verdicts advisory and the review gates inert. A fresh install writes `off`; an existing install without the key stays `enforce`. Flip with `/antislop:gate off` or `on`. |
 
 `pluginVersion`, `personaSelection`, `substitutions` and `fileHashes` are
 written by install and update; leave them alone. The file is protected: an
